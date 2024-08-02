@@ -8,7 +8,6 @@ library(lubridate)
 library(sf)
 library(tigris)
 
-#load data -----------------
 setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble")
 
 ##study site--------------------
@@ -196,16 +195,15 @@ pabs_sum_sf <- pabs_sum %>%
   st_as_sf()
 
 ## elimination area groupings ---------------------------
-############## RUN ON SERVER ######################
-# pabs_long <- pabs %>% pivot_longer(all_of(1:ncol(pabs)))
-# pabs_long$site_idx <- rep(rep(1:nsites,nperiods),nmcmc*nChains)
-# pabs_long$period_idx <- rep(sort(rep(1:nperiods,nsites)),nmcmc*nChains)
-# pabs_long$samp_idx <- sort(rep(1:(nmcmc*nChains),nsites*nperiods))
-# pabs_long <- pabs_long %>%
-#   left_join(study_site_grid %>%
-#               st_drop_geometry() %>%
-#               rename(site_idx=SiteID) %>%
-#               select(site_idx,Area_Name))
+pabs_long <- pabs %>% pivot_longer(all_of(1:ncol(pabs)))
+pabs_long$site_idx <- rep(rep(1:nsites,nperiods),nmcmc*nChains)
+pabs_long$period_idx <- rep(sort(rep(1:nperiods,nsites)),nmcmc*nChains)
+pabs_long$samp_idx <- sort(rep(1:(nmcmc*nChains),nsites*nperiods))
+pabs_long <- pabs_long %>%
+  left_join(study_site_grid %>%
+              st_drop_geometry() %>%
+              rename(site_idx=SiteID) %>%
+              select(site_idx,Area_Name))
 # 
 # pabs_long %>% 
 #   group_by(Area_Name,period_idx) %>% 
@@ -329,7 +327,7 @@ pabs_thresh <- pabs_long %>%
             uci=quantile(over_thresh,0.975))
 pabs_thresh$Area_Name[pabs_thresh$Area_Name=="0"] <- "Outside EAs"
 
-pabs_thresh<- pabs_thresh %>% 
+pabs_thresh <- pabs_thresh %>% 
   left_join(dat_occ %>% ungroup() %>% select(period_idx,per_start) %>% distinct())
 
 # pabs_prop_thresh_season <- pabs_sum_sf %>% st_drop_geometry() %>% 
@@ -362,6 +360,75 @@ ggplot(pabs_thresh)+
 
 ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_over50_season_ea.jpeg"),
        device="jpeg",width=10,height=5,units="in")
+
+## extent of p(abs) threshold ----------------------
+pabs_long$above_thresh <- ifelse(pabs_long$value>elim_thresh,1,0)
+pabs_long <- pabs_long %>% left_join(study_site_grid %>% 
+                          st_drop_geometry() %>% 
+                          rename(site_idx=SiteID) %>%
+                          select(site_idx,area_km))
+tot_area_km <- as.numeric(study_site_grid %>% st_union() %>% st_area()/1e6)
+
+samp <- pabs_long %>% 
+  group_by(above_thresh,period_idx,samp_idx) %>% 
+  summarise(area_above_thresh=sum(area_km)) %>% 
+  filter(above_thresh==1) %>% 
+  group_by(period_idx) %>% 
+  summarise(mn=mean(area_above_thresh),
+            md=median(area_above_thresh),
+            lci=quantile(area_above_thresh,0.025),
+            uci=quantile(area_above_thresh,0.975),
+            mn_prop=mn/tot_area_km,
+            md_prop=md/tot_area_km,
+            lci_prop=lci/tot_area_km,
+            uci_prop=uci/tot_area_km)%>% 
+  left_join(dat_occ %>% select(period_idx,per_start,fy) %>% distinct())
+
+ggplot(samp)+ geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
+  geom_line(aes(x=per_start,y=mn),lwd=1)+
+  xlab("Season")+
+  ylab(expression(paste("K",m^2," with > 0.75 p(elimination)")))+
+  ylim(0,tot_area_km/4)
+
+ggsave(filename="./Model outputs/Plots/km2_eliminated_75.jpeg",
+       width=7,height=5,units="in",device="jpeg")
+
+ggplot(samp)+ geom_ribbon(aes(x=per_start,ymin=lci_prop,ymax=uci_prop),alpha=0.5)+
+  geom_line(aes(x=per_start,y=mn_prop),lwd=1)+
+  xlab("Season")+
+  ylab("Proportion of study area with p(elimination) > 0.75")+
+  ylim(0,0.25)
+
+ggsave(filename="./Model outputs/Plots/prop_eliminated_75.jpeg",
+       width=7,height=5,units="in",device="jpeg")
+
+
+### by year ----------------------
+pabs_long <- pabs_long %>% 
+  left_join(dat_occ %>% select(period_idx,per_start) %>% distinct())
+pabs_long$year <- year(pabs_long$per_start)
+pabs_long$fy <- pabs_long$year
+pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] <- 
+  pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] +1
+
+samp_yr <- pabs_long %>% 
+  group_by(site_idx,year,samp_idx) %>% 
+  summarise(yr_mn=mean(value),
+            area_km=unique(area_km),
+            above_thresh=ifelse(yr_mn>elim_thresh,1,0)) %>% 
+  filter(above_thresh==1) %>% 
+  group_by(year,samp_idx) %>% 
+  summarise(area_above_thresh=sum(area_km)) %>% 
+  group_by(year) %>% 
+  summarise(mn=mean(area_above_thresh),
+            md=median(area_above_thresh),
+            lci=quantile(area_above_thresh,0.025),
+            uci=quantile(area_above_thresh,0.975),
+            mn_prop=mn/tot_area_km,
+            md_prop=md/tot_area_km,
+            lci_prop=lci/tot_area_km,
+            uci_prop=uci/tot_area_km)
+write.csv(samp_yr,paste0("./Model outputs/area_above_,",elim_thresh,"_table.csv"))
 
 ##median p(abs) by season and ea -----------------------
 pabs_sum_ea <- pabs_long %>% 
