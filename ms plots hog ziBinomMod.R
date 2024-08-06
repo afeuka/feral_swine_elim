@@ -824,28 +824,28 @@ ggplot()+
 ggsave(filename="./Model Outputs/Plots/Manuscript/std_abundance_trend_removal.jpeg",
        device="jpeg",width=10,height=6,units="in")
 
-##abundance trends ------------------------------
-yrs <- unique(N_sum_sf$fy)
-gN <- N_trend <- list()
-for(i in 1:length(yrs)){
-  if(i==1){
-    N_trend[[i]] <- N_sum_sf %>% 
-      filter(fy==yrs[i]) %>% 
-      filter(period_idx!=1) %>% 
-      group_by(elim_area_idx) %>% 
-      summarise(trend = lm(md_std~period_idx)$coefficients[2],
-                fy=min(fy))
-  } else {
-    N_trend[[i]] <- N_sum_sf %>% 
-      filter(fy==yrs[i]) %>% 
-      group_by(elim_area_idx) %>% 
-      summarise(trend = lm(md_std~period_idx)$coefficients[2],
-                fy=min(fy))
-  }
-}
-
-trend_max <- max(unlist(lapply(1:length(yrs),function(i)max(N_trend[[i]]$trend))))
-trend_min <- min(unlist(lapply(1:length(yrs),function(i)min(N_trend[[i]]$trend))))
+## abundance trends ------------------------------
+# yrs <- unique(N_sum_sf$fy)
+# gN <- N_trend <- list()
+# for(i in 1:length(yrs)){
+#   if(i==1){
+#     N_trend[[i]] <- N_sum_sf %>% 
+#       filter(fy==yrs[i]) %>% 
+#       filter(period_idx!=1) %>% 
+#       group_by(elim_area_idx) %>% 
+#       summarise(trend = lm(md_std~period_idx)$coefficients[2],
+#                 fy=min(fy))
+#   } else {
+#     N_trend[[i]] <- N_sum_sf %>% 
+#       filter(fy==yrs[i]) %>% 
+#       group_by(elim_area_idx) %>% 
+#       summarise(trend = lm(md_std~period_idx)$coefficients[2],
+#                 fy=min(fy))
+#   }
+# }
+# 
+# trend_max <- max(unlist(lapply(1:length(yrs),function(i)max(N_trend[[i]]$trend))))
+# trend_min <- min(unlist(lapply(1:length(yrs),function(i)min(N_trend[[i]]$trend))))
 
 # for(i in 1:length(yrs)){
   # yr_idx <- N_sum_sf %>% st_drop_geometry() %>% 
@@ -875,15 +875,15 @@ trend_min <- min(unlist(lapply(1:length(yrs),function(i)min(N_trend[[i]]$trend))
 # gN[[2]]
 # gN[[3]]
 
-N_trend <- do.call("rbind",N_trend)
+# N_trend <- do.call("rbind",N_trend)
 
 ##abundance trends wi elim areas fy -----------------
-N_trend <- N_trend %>% left_join(elim_areas %>% st_drop_geometry())
-N_trend$Area_Name[N_trend$Area_Name==0] <- "Outside EAs"
-N_trend_elim_fy <- N_trend %>% st_drop_geometry() %>% 
-  group_by(fy,Area_Name) %>% 
-  summarise(mn=mean(trend,na.rm=T),
-            md=median(trend,na.rm=T))
+# N_trend <- N_trend %>% left_join(elim_areas %>% st_drop_geometry())
+# N_trend$Area_Name[N_trend$Area_Name==0] <- "Outside EAs"
+# N_trend_elim_fy <- N_trend %>% st_drop_geometry() %>% 
+#   group_by(fy,Area_Name) %>% 
+#   summarise(mn=mean(trend,na.rm=T),
+#             md=median(trend,na.rm=T))
 
 # ggplot(N_trend_elim_fy)+
 #   geom_hline(yintercept = 0,col="grey33",lty=2)+
@@ -900,48 +900,57 @@ N_trend_elim_fy <- N_trend %>% st_drop_geometry() %>%
 #   theme(text=element_text(size=15))
 
 ##overall trends by fy -------------------
-N_trend %>% 
-  st_drop_geometry() %>% 
-  group_by(fy) %>% 
-  summarise(md=median(trend,na.rm=T))
-
-N_sum %>% 
-  group_by(period_idx,fy) %>% 
-  mutate(grndmn=mean(md_std)) %>% 
-  group_by(fy) %>% 
-  # ungroup() %>% 
-  summarise(trend = lm(grndmn~period_idx)$coefficients[2])
+# N_trend %>% 
+#   st_drop_geometry() %>% 
+#   group_by(fy) %>% 
+#   summarise(md=median(trend,na.rm=T))
+# 
+# N_sum %>% 
+#   group_by(period_idx,fy) %>% 
+#   mutate(grndmn=mean(md_std)) %>% 
+#   group_by(fy) %>% 
+#   # ungroup() %>% 
+#   summarise(trend = lm(grndmn~period_idx)$coefficients[2])
 
 ## proportional change ---------------------------
 ### season ------------------------
-N_sum_sf$mn_prev <- NA
-for(i in 1:nrow(N_sum_sf)){
-  if(N_sum_sf$period_idx[i]>1){
-    N_sum_sf$mn_prev[i] <- N_sum_sf$mn[N_sum_sf$period_idx==N_sum_sf$period_idx[i]-1 &
-                                   N_sum_sf$elim_area_idx==N_sum_sf$elim_area_idx[i]]
-  }
-}
-N_sum_sf$per_change <- (N_sum_sf$mn-N_sum_sf$mn_prev)/N_sum_sf$mn_prev
-
-ggplot(N_sum_sf %>% filter(Area_Name!="0"))+
-  geom_line(aes(x=per_start,y=per_change,col=factor(Area_Name)),lwd=1)+
-  scale_color_discrete(name="Elimination Area")+
-  xlab("Season")+ylab("Percent change in feral swine abundance")
+# N_sum_sf$mn_prev <- NA
+# for(i in 1:nrow(N_sum_sf)){
+#   if(N_sum_sf$period_idx[i]>1){
+#     N_sum_sf$mn_prev[i] <- N_sum_sf$mn[N_sum_sf$period_idx==N_sum_sf$period_idx[i]-1 &
+#                                    N_sum_sf$elim_area_idx==N_sum_sf$elim_area_idx[i]]
+#   }
+# }
+# N_sum_sf$per_change <- (N_sum_sf$mn-N_sum_sf$mn_prev)/N_sum_sf$mn_prev
+# 
+# ggplot(N_sum_sf %>% filter(Area_Name!="0"))+
+#   geom_line(aes(x=per_start,y=per_change,col=factor(Area_Name)),lwd=1)+
+#   scale_color_discrete(name="Elimination Area")+
+#   xlab("Season")+ylab("Percent change in feral swine abundance")
 
 ### annual ------------------------
-N_yr <- N_sum_sf %>% 
-  group_by(year,Area_Name) %>% 
-  summarise(mn=mean(mn),
-            per_start=min(per_start))
+N_long <- N %>% pivot_longer(cols=all_of(1:ncol(N)),names_to="idx",values_to="value")
+N_long$elim_area_idx <- rep(rep(1:nea,nperiods),nmcmc*nChains)
+N_long$period_idx <- rep(sort(rep(1:nperiods,nea)),nmcmc*nChains)
+N_long$samp_idx <- sort(rep(1:(nmcmc*nChains),nea*nperiods))
+N_long <- N_long %>%
+  left_join(elim_areas %>% st_drop_geometry())
 
-N_yr$mn_prev<- NA
-for(i in 1:nrow(N_yr)){
-  if(N_yr$year[i]>2020){
-    N_yr$mn_prev[i] <- N_yr$mn[N_yr$year==N_yr$year[i]-1 &
-                                      N_yr$Area_Name==N_yr$Area_Name[i]]
+per_idx <- dat_occ %>% select(period_idx,per_start) %>% 
+  mutate(year=year(per_start)) %>% distinct()
+per_idx$fy <- per_idx$year
+per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] <- per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] +1
+
+N_long <- N_long %>% left_join(per_idx)
+
+N_long$value_prev<- NA
+for(i in 1:nrow(N_long)){
+  if(N_long$year[i]>2020){
+    N_long$value_prev[i] <- N_long$value[N_long$year==N_long$year[i]-1 &
+                                     N_long$elim_area_idx==N_long$elim_area_idx[i]]
   }
 }
-N_yr$per_change <- (N_yr$mn-N_yr$mn_prev)/N_yr$mn_prev
+N_long$per_change <- (N_long$value-N_long$value_prev)/N_long$value_prev
 
 N_yr_df <- N_yr %>% st_drop_geometry() %>% filter(year>2020) %>% 
   select(-c(mn,mn_prev,per_start)) %>% 
@@ -950,7 +959,7 @@ N_yr_df <- N_yr %>% st_drop_geometry() %>% filter(year>2020) %>%
 write.csv(N_yr_df,"./Model outputs/N_change_table.csv")
 
 
-#removal probability -----------------
+# removal probability -----------------
 if(!exists("cpue")){
   cpue <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
     cbind.data.frame(samples[[i]][,grepl("p_",colnames(samples[[i]])) &
@@ -972,9 +981,12 @@ p_rem_sum <- p_rem %>%
             uci=quantile(value,0.975))
 p_rem_sum
 
-##aerial --------------------------
+## aerial --------------------------
 aerial_eff <- seq(min(dat_aerial$eff_area_hrs),max(dat_aerial$eff_area_hrs),by=0.01)
-det_aerial <- sapply(1:(nmcmc*nChains),function(i)1-(1-p_rem[i,"Aerial"])^aerial_eff)
+aerial_area_mn <- mean(dat_aerial$prop_ea_impact[dat_aerial$prop_ea_impact!=0])
+det_aerial <- sapply(1:(nmcmc*nChains),function(i){
+  aerial_area_mn*(1-(1-p_rem[i,"Aerial"])^aerial_eff)})
+
 
 det_aerial_sum <- data.frame(flight_hrs_km=aerial_eff,
                       mn=rowMeans(det_aerial),
@@ -984,7 +996,7 @@ det_aerial_sum <- data.frame(flight_hrs_km=aerial_eff,
 g_a <- ggplot(det_aerial_sum)+
   geom_ribbon(aes(x=flight_hrs_km,ymin=lci,ymax=uci),alpha=0.3)+
   geom_line(aes(x=flight_hrs_km,y=mn))+
-  ylab("Cumulative capture rate")+
+  ylab("Removal rate")+
   xlab(expression(paste("Flight hours per k",m^2)))+
   ggtitle("Aerial Operations")+
   theme(text=element_text(size=15))
@@ -992,9 +1004,11 @@ g_a <- ggplot(det_aerial_sum)+
 # ggsave(g_a,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_aerial.jpeg"),
 #        device="jpeg",width=7,height=5,units="in")
 
-##trapping --------------------------
+## trapping --------------------------
 trap_eff <- seq(min(dat_trap$eff_area_hrs),max(dat_trap$eff_area_hrs),by=0.01)
-det_trap <- sapply(1:(nmcmc*nChains),function(i)1-(1-p_rem[i,"Trap"])^trap_eff)
+trap_area_mn <- mean(dat_trap$prop_ea_impact[dat_trap$prop_ea_impact!=0])
+det_trap <- sapply(1:(nmcmc*nChains),function(i){
+  trap_area_mn*(1-(1-p_rem[i,"Trap"])^trap_eff)})
 
 det_trap_sum <- data.frame(trap_hrs_km=trap_eff,
                              mn=rowMeans(det_trap),
@@ -1005,7 +1019,7 @@ g_t <- ggplot(det_trap_sum)+
   geom_ribbon(aes(x=trap_hrs_km,ymin=lci,ymax=uci),alpha=0.3)+
   geom_line(aes(x=trap_hrs_km,y=mn))+
   xlim(0,2.55)+
-  ylab("Cumulative capture rate")+
+  ylab("Removal rate")+
   xlab(expression(paste("Trapping hours per k",m^2)))+
   ggtitle("Trapping")+
   theme(text=element_text(size=15))
@@ -1013,9 +1027,11 @@ g_t <- ggplot(det_trap_sum)+
 # ggsave(g_t,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_trap.jpeg"),
        # device="jpeg",width=7,height=5,units="in")
 
-##ground -------------------------
+## ground -------------------------
 ground_eff <- seq(min(dat_ground$eff_area_events),max(dat_ground$eff_area_events),by=0.01)
-det_ground <- sapply(1:(nmcmc*nChains),function(i)1-(1-p_rem[i,"Ground"])^ground_eff)
+ground_area_mn <- mean(dat_ground$prop_ea_impact[dat_ground$prop_ea_impact!=0])
+det_ground <- sapply(1:(nmcmc*nChains),function(i){
+  ground_area_mn*(1-(1-p_rem[i,"Ground"])^ground_eff)})
 
 det_ground_sum <- data.frame(events_km=ground_eff,
                              mn=rowMeans(det_ground),
@@ -1025,7 +1041,7 @@ det_ground_sum <- data.frame(events_km=ground_eff,
 g_g<- ggplot(det_ground_sum)+
   geom_ribbon(aes(x=events_km,ymin=lci,ymax=uci),alpha=0.3)+
   geom_line(aes(x=events_km,y=mn))+
-  ylab("Cumulative capture rate")+
+  ylab("Removal rate")+
   xlab(expression(paste("No. of ground shooting events per k",m^2)))+
   ggtitle("Ground Shooting")+
   theme(text=element_text(size=15))
@@ -1033,11 +1049,25 @@ g_g<- ggplot(det_ground_sum)+
 # ggsave(g_g,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_ground.jpeg"),
        # device="jpeg",width=7,height=5,units="in")
 
-##all together --------------------
-g_all <- gridExtra::arrangeGrob(g_a+ylim(0,1), g_t+ylim(0,1), g_g+ylim(0,1),nrow=1) #generates g
+## all together --------------------
+g_all <- gridExtra::arrangeGrob(g_a+ylim(0,0.035), g_t+ylim(0,0.035), g_g+ylim(0,0.035),nrow=1) #generates g
 
 ggsave(g_all,file=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_all.jpeg"),
        device="jpeg",width=13,height=6,units="in")
+
+##removal comparisons --------------------
+a_mn <- max(dat_aerial$prop_ea_impact)*(1-(1-p_rem[,"Aerial"])^max(dat_aerial$eff_area_hrs[dat_aerial$eff_area_hrs!=0]))
+t_mn <- max(dat_trap$prop_ea_impact)*(1-(1-p_rem[,"Trap"])^max(dat_trap$eff_area_hrs[dat_trap$eff_area_hrs!=0]))
+g_mn <- max(dat_ground$prop_ea_impact)*(1-(1-p_rem[,"Ground"])^max(dat_ground$eff_area_events[dat_ground$eff_area_events!=0]))
+
+rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn,ground=g_mn)
+rem_df <- rem_mn %>% pivot_longer(cols=1:3,names_to="rem_typ",values_to="value") %>% 
+  group_by(rem_typ) %>% 
+  summarise(mn=mean(value),
+            lci=quantile(value,0.025),
+            uci=quantile(value,0.975))
+rem_df$mn[1]/rem_df$mn[2]
+rem_df$mn[1]/rem_df$mn[3]
 
 #population growth rate--------------
 if(!exists("lambda")){
