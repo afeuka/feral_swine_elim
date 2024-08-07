@@ -261,6 +261,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
         # r_nb[k,t] <- (mu_nb[k,t]^2)/(sig2_nb-mu_nb[k,t])
         # N[k,t] ~ dnegbin(prob=p_nb[k,t],size=r_nb[k,t])
         N[i,t] ~ dpois(mu_nb[i,t])
+        N_change[i,t] <- (N[i,t]-N[i,t-1])/N[i,t-1]
       }
     }
     
@@ -427,6 +428,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "p_n1",
                 "r_n1",
                 "N_latent",
+                "N_change",
                 "p_trap",
                 "p_ground",
                 "p_aerial",
