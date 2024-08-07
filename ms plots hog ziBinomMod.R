@@ -369,7 +369,7 @@ pabs_long <- pabs_long %>% left_join(study_site_grid %>%
                           select(site_idx,area_km))
 tot_area_km <- as.numeric(study_site_grid %>% st_union() %>% st_area()/1e6)
 
-samp <- pabs_long %>% 
+pabs_thresh_ext <- pabs_long %>% 
   group_by(above_thresh,period_idx,samp_idx) %>% 
   summarise(area_above_thresh=sum(area_km)) %>% 
   filter(above_thresh==1) %>% 
@@ -382,9 +382,9 @@ samp <- pabs_long %>%
             md_prop=md/tot_area_km,
             lci_prop=lci/tot_area_km,
             uci_prop=uci/tot_area_km)%>% 
-  left_join(dat_occ %>% select(period_idx,per_start,fy) %>% distinct())
+  left_join(dat_occ %>% select(period_idx,per_start) %>% distinct())
 
-ggplot(samp)+ geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
+ggplot(pabs_thresh_ext)+ geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
   geom_line(aes(x=per_start,y=mn),lwd=1)+
   xlab("Season")+
   ylab(expression(paste("K",m^2," with > 0.75 p(elimination)")))+
@@ -393,7 +393,7 @@ ggplot(samp)+ geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
 ggsave(filename="./Model outputs/Plots/km2_eliminated_75.jpeg",
        width=7,height=5,units="in",device="jpeg")
 
-ggplot(samp)+ geom_ribbon(aes(x=per_start,ymin=lci_prop,ymax=uci_prop),alpha=0.5)+
+ggplot(pabs_thresh_ext)+ geom_ribbon(aes(x=per_start,ymin=lci_prop,ymax=uci_prop),alpha=0.5)+
   geom_line(aes(x=per_start,y=mn_prop),lwd=1)+
   xlab("Season")+
   ylab("Proportion of study area with p(elimination) > 0.75")+
@@ -411,7 +411,7 @@ pabs_long$fy <- pabs_long$year
 pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] <- 
   pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] +1
 
-samp_yr <- pabs_long %>% 
+pabs_thresh_yr <- pabs_long %>% 
   group_by(site_idx,year,samp_idx) %>% 
   summarise(yr_mn=mean(value),
             area_km=unique(area_km),
@@ -428,7 +428,7 @@ samp_yr <- pabs_long %>%
             md_prop=md/tot_area_km,
             lci_prop=lci/tot_area_km,
             uci_prop=uci/tot_area_km)
-write.csv(samp_yr,paste0("./Model outputs/area_above_,",elim_thresh,"_table.csv"))
+write.csv(pabs_thresh_yr,paste0("./Model outputs/area_above_,",elim_thresh,"_table.csv"))
 
 ##median p(abs) by season and ea -----------------------
 pabs_sum_ea <- pabs_long %>% 
@@ -914,19 +914,30 @@ ggsave(filename="./Model Outputs/Plots/Manuscript/std_abundance_trend_removal.jp
 
 ## proportional change ---------------------------
 ### season ------------------------
-# N_sum_sf$mn_prev <- NA
-# for(i in 1:nrow(N_sum_sf)){
-#   if(N_sum_sf$period_idx[i]>1){
-#     N_sum_sf$mn_prev[i] <- N_sum_sf$mn[N_sum_sf$period_idx==N_sum_sf$period_idx[i]-1 &
-#                                    N_sum_sf$elim_area_idx==N_sum_sf$elim_area_idx[i]]
-#   }
-# }
-# N_sum_sf$per_change <- (N_sum_sf$mn-N_sum_sf$mn_prev)/N_sum_sf$mn_prev
+# N_change <- do.call("rbind",lapply(1:nChains,function(i){
+#   samples[[i]][grepl("N_change",colnames(samples[[i]]))]}))
 # 
-# ggplot(N_sum_sf %>% filter(Area_Name!="0"))+
-#   geom_line(aes(x=per_start,y=per_change,col=factor(Area_Name)),lwd=1)+
-#   scale_color_discrete(name="Elimination Area")+
-#   xlab("Season")+ylab("Percent change in feral swine abundance")
+# N_change_sum=data.frame(idx=colnames(N_change),
+#                         mn=colMeans(N_change),
+#                         md=sapply(1:ncol(N_change),function(i)quantile(N_change[,i],prob=0.5,na.rm=T)),
+#                         lci=sapply(1:ncol(N_change),function(i)quantile(N_change[,i],prob=0.025,na.rm=T)),
+#                         uci=sapply(1:ncol(N_change),function(i)quantile(N_change[,i],prob=0.975,na.rm=T)))
+# 
+# N_change_sum$elim_area_idx <- sapply(1:nrow(N_change_sum),function(x){
+#   as.numeric(gsub("\\[","",gsub("N_change","",unlist(str_split(N_change_sum[x,"idx"],","))[1])))})
+# 
+# N_change_sum$period_idx <- sapply(1:nrow(N_change_sum),function(x){
+#   as.numeric(gsub("\\]","",unlist(str_split((N_change_sum[x,"idx"]),","))[2]))})
+# 
+# N_change_sum$per_start <- sapply(1:nrow(N_change_sum),function(i){
+#   min(dat_occ$per_start[dat_occ$period_idx==N_change_sum$period_idx[i]])})
+# N_change_sum$per_start <- as.Date(N_change_sum$per_start,origin='1970-01-01')
+# N_change_sum$year <- year(N_change_sum$per_start)
+# N_change_sum$fy <- N_change_sum$year
+# N_change_sum$fy[month(N_change_sum$per_start)%in%c(10:12)] <- 
+#   N_change_sum$fy[month(N_change_sum$per_start)%in%c(10:12)]+1
+# 
+# ggplot(N_change_sum)+geom_line(aes(x=per_start,y=mn,col=factor(elim_area_idx)))
 
 ### annual ------------------------
 N_long <- N %>% pivot_longer(cols=all_of(1:ncol(N)),names_to="idx",values_to="value")
@@ -943,20 +954,29 @@ per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] <- per_idx$fy[month(per_idx$
 
 N_long <- N_long %>% left_join(per_idx)
 
-N_long$value_prev<- NA
-for(i in 1:nrow(N_long)){
-  if(N_long$year[i]>2020){
-    N_long$value_prev[i] <- N_long$value[N_long$year==N_long$year[i]-1 &
-                                     N_long$elim_area_idx==N_long$elim_area_idx[i]]
+N_yr <- N_long %>% filter(month(per_start)==10 | (month(per_start)==7 & year==2023))
+N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
+
+N_yr$value_prev<- NA
+for(i in 1:nrow(N_yr)){
+  if(N_yr$per_temp[i]>1){
+    N_yr$value_prev[i] <- N_yr$value[N_yr$per_temp==(N_yr$per_temp[i]-1) &
+                                       N_yr$elim_area_idx==N_yr$elim_area_idx[i] &
+                                       N_yr$samp_idx==N_yr$samp_idx[i]]
   }
 }
-N_long$per_change <- (N_long$value-N_long$value_prev)/N_long$value_prev
 
-N_yr_df <- N_yr %>% st_drop_geometry() %>% filter(year>2020) %>% 
-  select(-c(mn,mn_prev,per_start)) %>% 
-  pivot_wider(names_from=Area_Name,values_from=per_change)
+N_yr$per_change <- (N_yr$value-N_yr$value_prev)/N_yr$value_prev
 
-write.csv(N_yr_df,"./Model outputs/N_change_table.csv")
+N_yr_sum <- N_yr %>% 
+  filter(year>2020) %>% 
+  group_by(Area_Name,period_idx,per_start) %>% 
+  summarise(mn=mean(per_change,na.rm=T)*100,
+            md=median(per_change,na.rm=T)*100,
+            lci=quantile(per_change,0.025,na.rm=T)*100,
+            uci=quantile(per_change,0.975,na.rm=T)*100) 
+
+write.csv(N_yr_sum,"./Model outputs/N_change_table.csv")
 
 
 # removal probability -----------------
@@ -1145,4 +1165,14 @@ sysbait_det_eff %>%
   summarise(dets=sum(detection),
             trap_nights=sum(trap_nights))
 
-            
+#save posterior summaries ---------------------------------
+save(eff_sum_sf,N_sum_sf,N_yr_sum,p_rem_sum,pabs_sum_ea,pabs_sum,
+     pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
+     pelim_ea,pelim_ea_fy,pelim_sum,pelim_sum_fy,rem_df,
+     det_aerial_sum,det_trap_sum,det_ground_sum,
+     pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
+     dat_occ,dat_rem,dat_rem_sum,
+     file="./Model outputs/posterior_summaries_25JUL24.RData")
+
+
+          
