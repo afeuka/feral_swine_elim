@@ -222,7 +222,7 @@ pabs_sum <- pabs_sum %>%
               rename(site_idx=SiteID) %>% 
               select(site_idx,Area_Name))
 pabs_ea_sum <- pabs_sum %>% 
-  group_by(Area_Name) %>% 
+  group_by(Area_Name,per_start) %>% 
   summarise(ea_md=median(mn))
 pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
 pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
@@ -362,6 +362,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_over50_season_ea.j
        device="jpeg",width=10,height=5,units="in")
 
 ## extent of p(abs) threshold ----------------------
+elim_thresh<-0.5
 pabs_long$above_thresh <- ifelse(pabs_long$value>elim_thresh,1,0)
 pabs_long <- pabs_long %>% left_join(study_site_grid %>% 
                           st_drop_geometry() %>% 
@@ -412,14 +413,14 @@ pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] <-
   pabs_long$fy[month(pabs_long$per_start)%in%c(10:12)] +1
 
 pabs_thresh_yr <- pabs_long %>% 
-  group_by(site_idx,year,samp_idx) %>% 
+  group_by(site_idx,fy,samp_idx) %>% 
   summarise(yr_mn=mean(value),
             area_km=unique(area_km),
             above_thresh=ifelse(yr_mn>elim_thresh,1,0)) %>% 
   filter(above_thresh==1) %>% 
-  group_by(year,samp_idx) %>% 
+  group_by(fy,samp_idx) %>% 
   summarise(area_above_thresh=sum(area_km)) %>% 
-  group_by(year) %>% 
+  group_by(fy) %>% 
   summarise(mn=mean(area_above_thresh),
             md=median(area_above_thresh),
             lci=quantile(area_above_thresh,0.025),
@@ -546,7 +547,7 @@ pelim_sum <- pelim_sum %>%
               rename(site_idx=SiteID) %>% 
               select(site_idx,Area_Name))
 pabs_ea_sum <- pelim_sum %>% 
-  group_by(Area_Name) %>% 
+  group_by(Area_Name,per_start) %>% 
   summarise(ea_md=median(mn))
 
 pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
@@ -1088,6 +1089,7 @@ rem_df <- rem_mn %>% pivot_longer(cols=1:3,names_to="rem_typ",values_to="value")
             uci=quantile(value,0.975))
 rem_df$mn[1]/rem_df$mn[2]
 rem_df$mn[1]/rem_df$mn[3]
+range(elim_areas %>% filter(Area_Name!="0") %>% st_area()/1e6)
 
 #population growth rate--------------
 if(!exists("lambda")){
