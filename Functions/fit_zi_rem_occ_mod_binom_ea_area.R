@@ -4,7 +4,7 @@
 ### Notes: 
 
 # monitors = NA
-# niter=10000
+# niter=100
 # burnProp=0.1
 # nChains=1
 # thin=1
@@ -46,6 +46,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   rem_eff_ea <- rem_eff_ea %>% filter(!is.na(prop_ea_impact)) %>% 
     filter(!(method=="Ground" & is.na(eff_area_events))) %>% 
     filter(!(method%in%c("Aerial","Trap") & is.na(eff_area_hrs))) %>% 
+    filter(!(method=="Aerial" & eff_area_hrs>0.15)) %>% 
     rename(period_idx = period) %>% 
     group_by(period_idx,method,Area_Name) %>% 
     mutate(pass_idx=1:n()) 
@@ -56,10 +57,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     select(period_idx) %>% distinct
   a_pers_n <- which(!(1:max(rem_eff_ea$period_idx)%in% a_pers$period_idx))
   eids <- unique(elim_areas$elim_area_idx)
-  # samp <- expand_grid(period_idx=a_pers_n,elim_area_idx=eids)
-  # rem_eff_ea %>% filter(method=="Aerial") %>% 
-  #   filter(period_idx%in%samp$period_idx & 
-  #            elim_area_idx%in%samp$elim_area_idx)
   
   samp <- rem_eff_ea[1:(length(a_pers_n)*length(eids)),]
   samp$method <- "Aerial"
@@ -193,8 +190,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     develop <- develop[samp_idx,]
     agri <- agri[samp_idx,]
   }
-# hist(exp(rnorm(100000,0,0.15)))
-# hist(rgamma(100000,1,10))
   
   # fit model ---------------------------
   ## model specification -------------------------------------------------
@@ -208,23 +203,29 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     r_n1 ~ dgamma(1,0.1)
     mu_lam ~ dnorm(0,0.15)
     sd_lam ~ dgamma(1,10)
+    sd_psi ~ dgamma(10,10)
+    
+    
     for(i in 1:nea){
       log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
+      sd_nb[i] ~ dunif(100,50000)
+      sig2_nb[i] <- sd_nb[i]^2
     }
     
     mu_p ~ dnorm(0,1)
     tau_p ~ dgamma(10,10)
-    sig_p <- sqrt(1/tau_p)
+    sd_p <- sqrt(1/tau_p)
     
-    logit(p_trap) ~ dnorm(mu_p,sd=sig_p)
-    logit(p_ground) ~ dnorm(mu_p,sd=sig_p)
-    logit(p_aerial) ~ dnorm(mu_p,sd=sig_p)
+    logit(p_trap) ~ dnorm(mu_p,sd=sd_p)
+    logit(p_ground) ~ dnorm(mu_p,sd=sd_p)
+    logit(p_aerial) ~ dnorm(mu_p,sd=sd_p)
     
     p_sys ~ dbeta(1,1)
     
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
+        mu_psi[k,t] <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
+        logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
         
         #occupancy/detection
         pabs[k,t] <- 1-psi[k,t]
@@ -257,10 +258,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       #abundace/removal process
       for(t in 2:nperiods){
         mu_nb[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
-        # p_nb[k,t] <- mu_nb[k,t]/sig2_nb
-        # r_nb[k,t] <- (mu_nb[k,t]^2)/(sig2_nb-mu_nb[k,t])
-        # N[k,t] ~ dnegbin(prob=p_nb[k,t],size=r_nb[k,t])
-        N[i,t] ~ dpois(mu_nb[i,t])
+        p_nb[i,t] <- mu_nb[i,t]/sig2_nb[i]
+        r_nb[i,t] <- (mu_nb[i,t]^2)/(sig2_nb[i]-mu_nb[i,t])
+        N[i,t] ~ dnegbin(prob=p_nb[i,t],size=r_nb[i,t])
+        # N[i,t] ~ dpois(mu_nb[i,t])
         # N_change[i,t] <- (N[i,t]-N[i,t-1])/N[i,t-1]
       }
     }
@@ -269,9 +270,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     ##aerial
     for(i in 1:nsamp_aerial){
       #effort imputation for helicopter data
-      # log(tot_hrs_a[i]) ~ dnorm(mu_eff_a,sd=sd_eff_a)
-      # eff_area_a[i] <- tot_hrs_a[i]/eff_area_km_a[i]
-      
       theta_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]] <-
         1-pow((1-p_aerial),eff_area_a[i])
       
@@ -328,7 +326,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       pdet[i] <- 1-(1-p_sys)^trap_nights_km[i]
       
       #occupancy likelihood
-      pocc[i] <- pdet[i] * z_site[site_idx_occ[i],period_idx_occ[i]]
+      pocc[i] <- pdet[i]*z_site[site_idx_occ[i],period_idx_occ[i]]
       yocc[i] ~ dbinom(prob=pocc[i],size=nweeks[i])
       yocc_pred[i] ~ dbinom(prob=pocc[i],size=nweeks[i])
     }
@@ -344,14 +342,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                  gamma_g=gamma_g,
                  yrem_aerial=dat_aerial$tot_rem,
                  eff_area_a=dat_aerial$eff_area_hrs,
-                 # tot_hrs_a = dat_aerial$tot_hrs,
-                 # eff_area_km_a = dat_aerial$eff_area_km,
                  gamma_a=gamma_a,
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
                  trap_nights_km=dat_occ$trap_nights_km,
-                 # eff_rem=dat_rem$eff_sc[,1],
-                 # eff_rem=dat_rem$eff,
                  yrem_mat=yrem)
   # modDat <- modDat[!(sapply(modDat, is.null))]
 
@@ -389,9 +383,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
 
   ### initial values -----------------------------
   inits <- list(beta=rnorm(nbeta,c(0,0.5),0.1),
-                # lambda=rnorm(1,1.3,0.1),
-                mu_lam=rnorm(1,0,0.15),
+                mu_lam=rnorm(1,0,0.1),
                 sd_lam=rnorm(1,0.1,0.01),
+                sd_nb=apply(yrem,1,max)+300,
                 p_sys=rbeta(1,1,3),
                 p_aerial=rbeta(1,2,1),
                 p_trap=rbeta(1,2,1),
@@ -405,7 +399,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   )
   # inits <- inits[!sapply(inits,is.null)]
   # inits$N[,-1] <- NA
-  inits$N[,1] <- apply(yrem,1,max)*25
+  inits$N[,1] <- apply(yrem,1,max)*25+5000
 
   ## nimble configuration -------------------------------------------------
   mod <- nimbleModel(code = ZIbinomcode,
@@ -435,6 +429,12 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "pip_a",
                 "pip_g",
                 "pip_t",
+                "sd_nb",
+                # "mu_p",
+                # "sd_p",
+                "sd_psi",
+                # "mu_lam",
+                # "sd_lam",
                 "yrem_pred_aerial",
                 "yrem_pred_ground",
                 "yrem_pred_trap",
@@ -452,23 +452,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-
-  # i<-48
-  # gamma_t[dat_trap$pass_idx[i],
-  #         dat_trap$elim_area_idx[i],
-  #         dat_trap$period_idx[i]]
-  # 
-  # Cmod$mod$theta_t[dat_trap$pass_idx[i],
-  #                  dat_trap$elim_area_idx[i],
-  #                  dat_trap$period_idx[i]]
   
-  # Cmod$mod$theta_t
+  # Cmod$mod$sd_psi
   # Cmod$mod$N
+  # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
   # Cmod$mod$calculate("p_n1")
 
-  # niter<-200000
+  # niter<-100000
   # burnProp<-0.75
   # thin <-5
 

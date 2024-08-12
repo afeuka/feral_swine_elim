@@ -8,11 +8,10 @@ library(tidyverse)
 library(pROC)
 library(nimble)
 
-# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_determ_psi_09MAY24.RData")
-# source("./Functions/vectorized_zibinom.R")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_08AUG24_validation.RData")
 
 ##load data --------------------------------
-# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd.RData")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData")
 
 if(class(samples)=="list"){
   nChains <- length(samples)
@@ -106,41 +105,48 @@ if(nChains>1){
 samp_N_a <- rem_ll_a <-dev_ypred_rem_a <- matrix(NA,nrow(dat_aerial),nmcmc*nChains)
 samp_N_t <- rem_ll_t <-dev_ypred_rem_t <- matrix(NA,nrow(dat_trap),nmcmc*nChains)
 samp_N_g <- rem_ll_g <-dev_ypred_rem_g <- matrix(NA,nrow(dat_ground),nmcmc*nChains)
-i<-1
 for(i in 1:nrow(dat_aerial)){
-  samp_N_a[i,] <- N_latent[,paste0("N_latent[",dat_aerial$elim_area_idx[i],", ",
-                          dat_aerial$period_idx[i],"]")]
-  rem_ll_a[i,] <- dbinom(x=dat_aerial$tot_rem[i],size=samp_N_a[i,],
-                         prob=pip_a[,i],log=T)
-  dev_ypred_rem_a[i,] <- dbinom(x=ypred_rem_a[,i],size=samp_N_a[i,],
-                              prob=pip_a[,i],log=T)
+  # if(dat_aerial$elim_area_idx[i]%in%c(5,7)){
+    samp_N_a[i,] <- N_latent[,paste0("N_latent[",dat_aerial$elim_area_idx[i],", ",
+                                     dat_aerial$period_idx[i],"]")]
+    rem_ll_a[i,] <- dbinom(x=dat_aerial$tot_rem[i],size=samp_N_a[i,],
+                           prob=pip_a[,i],log=T)
+    dev_ypred_rem_a[i,] <- dbinom(x=ypred_rem_a[,i],size=samp_N_a[i,],
+                                  prob=pip_a[,i],log=T)
+  # }
 }
 for(i in 1:nrow(dat_trap)){
-  samp_N_t[i,] <- N_latent[,paste0("N_latent[",dat_trap$elim_area_idx[i],", ",
-                                   dat_trap$period_idx[i],"]")]
-  rem_ll_t[i,] <- dbinom(x=dat_trap$tot_rem[i],size=samp_N_t[i,],
-                         prob=pip_t[,i],log=T)
-  dev_ypred_rem_t[i,] <- dbinom(x=ypred_rem_t[,i],size=samp_N_t[i,],
-                              prob=pip_t[,i],log=T)
+  # if(dat_trap$elim_area_idx[i]%in%c(5,7)){
+    samp_N_t[i,] <- N_latent[,paste0("N_latent[",dat_trap$elim_area_idx[i],", ",
+                                     dat_trap$period_idx[i],"]")]
+    rem_ll_t[i,] <- dbinom(x=dat_trap$tot_rem[i],size=samp_N_t[i,],
+                           prob=pip_t[,i],log=T)
+    dev_ypred_rem_t[i,] <- dbinom(x=ypred_rem_t[,i],size=samp_N_t[i,],
+                                  prob=pip_t[,i],log=T)
+  # }
 }
 for(i in 1:nrow(dat_ground)){
-  samp_N_g[i,] <- N_latent[,paste0("N_latent[",dat_ground$elim_area_idx[i],", ",
-                                   dat_ground$period_idx[i],"]")]
-  rem_ll_g[i,] <- dbinom(x=dat_ground$tot_rem[i],size=samp_N_g[i,],
-                         prob=pip_g[,i],log=T)
-  dev_ypred_rem_g[i,] <- dbinom(x=ypred_rem_g[,i],size=samp_N_g[i,],
-                              prob=pip_g[,i],log=T)
+  # if(dat_ground$elim_area_idx[i]%in%c(5,7)){
+    samp_N_g[i,] <- N_latent[,paste0("N_latent[",dat_ground$elim_area_idx[i],", ",
+                                     dat_ground$period_idx[i],"]")]
+    rem_ll_g[i,] <- dbinom(x=dat_ground$tot_rem[i],size=samp_N_g[i,],
+                           prob=pip_g[,i],log=T)
+    dev_ypred_rem_g[i,] <- dbinom(x=ypred_rem_g[,i],size=samp_N_g[i,],
+                                  prob=pip_g[,i],log=T)
+  # }
 }
+# rem_ll <- rem_ll_a
+# dev_ypred_rem <- dev_ypred_rem_a
 rem_ll <- rbind(rem_ll_a,rem_ll_t,rem_ll_g)
 dev_ypred_rem <- rbind(dev_ypred_rem_a,dev_ypred_rem_t,dev_ypred_rem_t)
 
-dev_y <- colSums(occ_ll) + colSums(rem_ll)
-dev_ypred <- colSums(dev_ypred_occ) + colSums(dev_ypred_rem)
+dev_y <- colSums(occ_ll) + colSums(rem_ll,na.rm=T)
+dev_ypred <- colSums(dev_ypred_occ) + colSums(dev_ypred_rem,na.rm = T)
 
 pVal_ll <- sum(dev_ypred>dev_y)/(nmcmc*nChains)
 
 pVal_occ <- sum(colSums(dev_ypred_occ)>colSums(occ_ll))/(nmcmc*nChains)
-pVal_rem <- sum(colSums(dev_ypred_rem)>colSums(rem_ll))/(nmcmc*nChains)
+pVal_rem <- sum(colSums(dev_ypred_rem,na.rm=T)>colSums(rem_ll,na.rm=T))/(nmcmc*nChains)
 
 pVal_ll
 pVal_occ
@@ -153,8 +159,8 @@ ggplot()+
   ggtitle(paste("pVal =",pVal_occ))
 
 ggplot()+
-  geom_histogram(aes(x=colSums(dev_ypred_rem),fill="predictions"),alpha=0.5)+
-  geom_histogram(aes(x=colSums(rem_ll),fill="data"),alpha=0.5)+
+  geom_histogram(aes(x=colSums(dev_ypred_rem,na.rm=T),fill="predictions"),alpha=0.5)+
+  geom_histogram(aes(x=colSums(rem_ll,na.rm=T),fill="data"),alpha=0.5)+
   xlab('loglikelihood - abundance')+
   ggtitle(paste("pVal =",pVal_rem))
 
@@ -180,23 +186,31 @@ mse_rem_a <- mse_pred_rem_a <- matrix(NA,nrow(dat_aerial),nmcmc*nChains)
 mse_rem_t <- mse_pred_rem_t <- matrix(NA,nrow(dat_trap),nmcmc*nChains)
 mse_rem_g <- mse_pred_rem_g<- matrix(NA,nrow(dat_ground),nmcmc*nChains)
 for(i in 1:nrow(dat_aerial)){
-  exp_N <- samp_N_a[i,]*pip_a[,i]
-  mse_rem_a[i,] <- (dat_aerial$tot_rem[i] - exp_N)^2
-  mse_pred_rem_a[i,] <- (ypred_rem_a[,i] - exp_N)^2
+  # if(dat_aerial$elim_area_idx[i]%in%c(5,7)){
+    exp_N <- samp_N_a[i,]*pip_a[,i]
+    mse_rem_a[i,] <- (dat_aerial$tot_rem[i] - exp_N)^2
+    mse_pred_rem_a[i,] <- (ypred_rem_a[,i] - exp_N)^2
+  # }
 }
 for(i in 1:nrow(dat_trap)){
-  exp_N <- samp_N_t[i,]*pip_t[,i]
-  mse_rem_t[i,] <- (dat_trap$tot_rem[i] - exp_N)^2
-  mse_pred_rem_t[i,] <- (ypred_rem_t[,i] - exp_N)^2
-}
+  # if(dat_trap$elim_area_idx[i]%in%c(5,7)){
+    exp_N <- samp_N_t[i,]*pip_t[,i]
+    mse_rem_t[i,] <- (dat_trap$tot_rem[i] - exp_N)^2
+    mse_pred_rem_t[i,] <- (ypred_rem_t[,i] - exp_N)^2
+  # }
+ }
 for(i in 1:nrow(dat_ground)){
-  exp_N <- samp_N_g[i,]*pip_g[,i]
-  mse_rem_g[i,] <- (dat_ground$tot_rem[i] - exp_N)^2
-  mse_pred_rem_g[i,] <- (ypred_rem_g[,i] - exp_N)^2
+  # if(dat_ground$elim_area_idx[i]%in%c(5,7)){
+    exp_N <- samp_N_g[i,]*pip_g[,i]
+    mse_rem_g[i,] <- (dat_ground$tot_rem[i] - exp_N)^2
+    mse_pred_rem_g[i,] <- (ypred_rem_g[,i] - exp_N)^2
+  # }
 }
 
-mse_rem <- colMeans(rbind(mse_rem_a,mse_rem_t,mse_rem_g))
-mse_pred_rem <- colMeans(rbind(mse_pred_rem_a,mse_pred_rem_t,mse_pred_rem_g))
+# mse_rem <- colMeans(mse_rem_a)
+# mse_pred_rem <- colMeans(mse_pred_rem_a)
+mse_rem <- colMeans(rbind(mse_rem_a,mse_rem_t,mse_rem_g),na.rm=T)
+mse_pred_rem <- colMeans(rbind(mse_pred_rem_a,mse_pred_rem_t,mse_pred_rem_g),na.rm=T)
 
 pVal_occ_mse <- sum(mse_pred_occ>mse_occ)/(nmcmc*nChains)
 pVal_rem_mse <- sum(mse_pred_rem>mse_rem)/(nmcmc*nChains)
@@ -213,9 +227,15 @@ ggplot()+
   xlab('mse - abundance')+
   ggtitle(paste("pVal =",pVal_rem_mse))
 
+
 #p-value mean and var stats -------------------
 ## mean ----------------
+# ypred_rem_a_46 <- ypred_rem_a[,dat_aerial$elim_area_idx%in%c(5,7)]
+# ypred_rem_t_46 <- ypred_rem_t[,dat_trap$elim_area_idx%in%c(5,7)]
+# ypred_rem_g_46 <- ypred_rem_g[,dat_ground$elim_area_idx%in%c(5,7)]
 
+# ypred_rem_mn <- rowMeans(cbind(ypred_rem_a))
+# dat_rem_mn <- mean(c(dat_aerial$tot_rem))
 ypred_rem_mn <- rowMeans(cbind(ypred_rem_a,ypred_rem_t,ypred_rem_g))
 dat_rem_mn <- mean(c(dat_aerial$tot_rem,dat_trap$tot_rem,dat_ground$tot_rem))
 pVal_rem_mn <- sum(ypred_rem_mn>dat_rem_mn)/(nmcmc*nChains)
@@ -233,6 +253,8 @@ ggplot()+geom_histogram(aes(x=ypred_occ_mn))+
   ggtitle(paste("pVal =",round(pVal_occ_mn,2)))
 
 ## standard deviation ------------------
+ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a),1,var))
+dat_rem_var <- sqrt(var(c(dat_aerial$tot_rem)))
 ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a,ypred_rem_t,ypred_rem_g),1,var))
 dat_rem_var <- sqrt(var(c(dat_aerial$tot_rem,dat_trap$tot_rem,dat_ground$tot_rem)))
 pVal_rem_var <- sum(ypred_rem_var>dat_rem_var)/(nmcmc*nChains)

@@ -47,24 +47,27 @@ source("./Functions/avail_fun.R")
 source("./Functions/fit_zi_rem_occ_mod_binom_ea_area.R")
 
 ##single chain -----------------
-# mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
-#                            rem_eff_ea = rem_eff_ea,
-#                            study_site_grid=study_site_grid,
-#                            elim_prob=0.95,
-#                            eff_weeks =10,
-#                            monitors = NA, 
-#                            subset_data=F,
-#                            niter=10000, 
-#                            thin=1,
-#                            burnProp=0.5,
-#                            nChains=1)
-# 
-# samples<- mcmc.out$samples
-# dat_occ <- mcmc.out$dat_occ
-# nsites <- mcmc.out$nsites
-# nea <- mcmc.out$nea
-# nperiods <- mcmc.out$nperiods
-# nbeta <- mcmc.out$nbeta
+mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
+                           rem_eff_ea = rem_eff_ea,
+                           study_site_grid=study_site_grid,
+                           elim_prob=0.95,
+                           eff_weeks =10,
+                           monitors = NA,
+                           subset_data=F,
+                           niter=10000,
+                           thin=5,
+                           burnProp=0.5,
+                           nChains=1)
+
+samples<- mcmc.out$samples
+dat_occ <- mcmc.out$dat_occ
+dat_aerial <- mcmc.out$dat_aerial
+dat_trap <- mcmc.out$dat_trap
+dat_ground <- mcmc.out$dat_ground
+nsites <- mcmc.out$nsites
+nea <- mcmc.out$nea
+nperiods <- mcmc.out$nperiods
+nbeta <- mcmc.out$nbeta
 
 # save(samples,dat_occ,dat_rem,nsites,nperiods,nbeta,
 #      file = "./Model outputs/ziBinMod_determ_psi.Rdata")
@@ -117,4 +120,4 @@ develop <- parSamples[[1]]$develop
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
      dat_trap,dat_ground,dat_aerial,
-     file="./Model outputs/ziBinMod_area_08AUG24_validation.Rdata")
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_08AUG24_validation.Rdata")
