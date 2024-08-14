@@ -4,7 +4,7 @@
 ### Notes: 
 
 # monitors = NA
-# niter=100
+# niter=10000
 # burnProp=0.1
 # nChains=1
 # thin=1
@@ -89,6 +89,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   elim_site_idx <- dat_occ %>% group_by(site_idx) %>% 
      summarise(elim_area_idx=as.numeric(unique(elim_area_idx))) %>% 
      arrange(site_idx)
+  # fy_idx <- sysbait_det_eff %>% group_by(period) %>% 
+  #   summarise(fy_idx=as.numeric(unique(fy))) %>% 
+  #   mutate(fy_idx=as.numeric(as.factor(fy_idx)))
 
   ##covariates -----------------------------
   nbeta <- 4
@@ -203,8 +206,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     r_n1 ~ dgamma(1,0.1)
     mu_lam ~ dnorm(0,0.15)
     sd_lam ~ dgamma(1,10)
-    sd_psi ~ dgamma(10,10)
-    
+    # sd_psi ~ dgamma(10,10)
     
     for(i in 1:nea){
       log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
@@ -217,15 +219,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_p <- sqrt(1/tau_p)
     
     logit(p_trap) ~ dnorm(mu_p,sd=sd_p)
-    logit(p_ground) ~ dnorm(mu_p,sd=sd_p)
+    # logit(p_ground) ~ dnorm(mu_p,sd=sd_p)
     logit(p_aerial) ~ dnorm(mu_p,sd=sd_p)
     
     p_sys ~ dbeta(1,1)
     
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        mu_psi[k,t] <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
-        logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
+        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
+        # logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
         
         #occupancy/detection
         pabs[k,t] <- 1-psi[k,t]
@@ -289,14 +291,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       #removal probability
       theta_g[pass_idx_g[i],site_idx_g[i],period_idx_g[i]] <-
         1-pow((1-p_ground),eff_area_g[i])
-      
+
       pip_g[i] <-
         avail_fun(pass=pass_idx_g[i],
                   gamma=gamma_g[pass_idx_g[i],site_idx_g[i],period_idx_g[i]],
                   gamma_past=gamma_g[1:(pass_idx_g[i]-1),site_idx_g[i],period_idx_g[i]],
                   theta=theta_g[pass_idx_g[i],site_idx_g[i],period_idx_g[i]],
                   theta_past=theta_g[1:(pass_idx_g[i]-1),site_idx_g[i],period_idx_g[i]])
-      
+
       #abundance likelihood
       yrem_ground[i] ~ dbinom(size=N_latent[site_idx_g[i],period_idx_g[i]], prob=pip_g[i])
       yrem_pred_ground[i] ~ dbinom(size=N_latent[site_idx_g[i],period_idx_g[i]], prob=pip_g[i])
@@ -427,16 +429,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "p_ground",
                 "p_aerial",
                 "pip_a",
-                "pip_g",
-                "pip_t",
+                # "pip_g",
+                # "pip_t",
                 "sd_nb",
                 # "mu_p",
                 # "sd_p",
-                "sd_psi",
                 # "mu_lam",
                 # "sd_lam",
                 "yrem_pred_aerial",
-                "yrem_pred_ground",
+                # "yrem_pred_ground",
                 "yrem_pred_trap",
                 "yocc_pred")
   # }
@@ -452,17 +453,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  
-  # Cmod$mod$sd_psi
-  # Cmod$mod$N
+
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
   # Cmod$mod$calculate("p_n1")
 
-  # niter<-100000
-  # burnProp<-0.75
-  # thin <-5
+  # niter<-10000
+  # burnProp<-0.5
+  # thin <-1
 
   samples <- runMCMC(Cmod$Cmcmc,
                       niter = niter,
