@@ -51,8 +51,8 @@ pocc_sum <- data.frame(idx=names(pocc_mn),mn=pocc_mn,md=pocc_md)
 ypred_vec <- rbinom(nrow(dat_occ),dat_occ$nweeks,pocc_sum$mn)
 ypred_vec_bin <- ifelse(ypred_vec>0,1,0)
 ybin <- ifelse(dat_occ$detections>0,1,0)
-auc_prev_bin <- as.numeric(roc(ybin,ypred_vec_bin)$auc)
-auc_prev_pocc <- as.numeric(roc(ybin,pocc_sum$mn)$auc)
+auc_prev_bin <- as.numeric(pROC::roc(ybin,ypred_vec_bin)$auc)
+auc_prev_pocc <- as.numeric(pROC::roc(ybin,pocc_sum$mn)$auc)
 
 ## AUC for occupancy process ---------------------
 psi_mn_vec <- numeric(nrow(dat_occ))
@@ -60,7 +60,7 @@ for(i in 1:nrow(dat_occ)){
   psi_mn_vec[i] <- psi_sum$mn[psi_sum$site_idx==dat_occ$site_idx[i] & 
                                 psi_sum$period_idx==dat_occ$period_idx[i]]
 }
-auc_occ <- suppressMessages(as.numeric(roc(ybin,psi_mn_vec)$auc))
+auc_occ <- suppressMessages(as.numeric(pROC::roc(ybin,psi_mn_vec)$auc))
 auc_prev_bin
 auc_prev_pocc
 auc_occ

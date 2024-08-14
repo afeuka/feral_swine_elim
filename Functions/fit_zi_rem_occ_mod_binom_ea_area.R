@@ -116,7 +116,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   gamma_t <- array(0,dim=c(max(dat_trap$pass_idx),nea,nperiods))
   for(i in 1:nea){
     for(t in 1:nperiods){
-      for(j in 1:max(dat_aerial$pass_idx,dat_ground$pass_idx,dat_trap$pass_idx)){
+      for(j in 1:max(dat_aerial$pass_idx,dat_trap$pass_idx)){
         x <- dat_aerial$prop_ea_impact[dat_aerial$pass_idx==j &
                                            dat_aerial$elim_area_idx==i &
                                            dat_aerial$period_idx==t]
@@ -190,11 +190,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       beta[i] ~ dlogis(0,1)
     }
     
+    for(i in 1:2){
+      alpha[i] ~ dlogis(0,1)
+    }
+    sd_pdet ~ dgamma(10,10)
+    
     p_n1 ~ dbeta(0.1,7)
     r_n1 ~ dgamma(1,0.1)
     mu_lam ~ dnorm(0,0.15)
     sd_lam ~ dgamma(1,10)
-    
     
     for(i in 1:nea){
       log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
@@ -206,8 +210,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     
     logit(p_trap) ~ dnorm(mu_p,sd=sd_p)
     logit(p_aerial) ~ dnorm(mu_p,sd=sd_p)
-    
-    p_sys ~ dbeta(1,1)
     
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
@@ -292,7 +294,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     #occupancy
     for(i in 1:nsamp_occ){
       #detection probability
-      pdet[i] <- 1-(1-p_sys)^trap_nights_km[i]
+      # pdet[i] <- 1-(1-p_sys)^trap_nights_km[i]
+      mu_pdet[i] <- alpha[1] + alpha[2]*trap_nights_km[i]
+      logit(pdet[i]) ~ dnorm(mu_pdet[i],sd=sd_pdet)
       
       #occupancy likelihood
       pocc[i] <- pdet[i]*z_site[site_idx_occ[i],period_idx_occ[i]]
@@ -336,7 +340,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 pass_idx_t=dat_trap$pass_idx,
                 pass_idx_a=dat_aerial$pass_idx,
                 nsamp_trap=nrow(dat_trap),
-                nsamp_ground=nrow(dat_ground),
                 nsamp_aerial=nrow(dat_aerial)
                 
   )
@@ -369,6 +372,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   # if(is.na(monitors)){
   monitors <- c("lambda",
                 "beta",
+                "alpha",
+                "sd_pdet",
                 "N",
                 "pabs",
                 "p_sys",

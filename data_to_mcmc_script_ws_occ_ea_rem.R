@@ -110,7 +110,6 @@ samples <- list(parSamples[[1]]$samples,
 dat_occ <- parSamples[[1]]$dat_occ
 dat_trap <- parSamples[[1]]$dat_trap
 dat_aerial <- parSamples[[1]]$dat_aerial
-dat_ground <- parSamples[[1]]$dat_ground
 nsites <- parSamples[[1]]$nsites
 nea <- parSamples[[1]]$nea
 nperiods <- parSamples[[1]]$nperiods
@@ -120,4 +119,4 @@ develop <- parSamples[[1]]$develop
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
      dat_trap,dat_ground,dat_aerial,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_08AUG24_validation.Rdata")
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_14AUG24_logit_det.Rdata")
