@@ -104,7 +104,6 @@ if(nChains>1){
 
 samp_N_a <- rem_ll_a <-dev_ypred_rem_a <- matrix(NA,nrow(dat_aerial),nmcmc*nChains)
 samp_N_t <- rem_ll_t <-dev_ypred_rem_t <- matrix(NA,nrow(dat_trap),nmcmc*nChains)
-samp_N_g <- rem_ll_g <-dev_ypred_rem_g <- matrix(NA,nrow(dat_ground),nmcmc*nChains)
 for(i in 1:nrow(dat_aerial)){
   # if(dat_aerial$elim_area_idx[i]%in%c(5,7)){
     samp_N_a[i,] <- N_latent[,paste0("N_latent[",dat_aerial$elim_area_idx[i],", ",
@@ -125,20 +124,9 @@ for(i in 1:nrow(dat_trap)){
                                   prob=pip_t[,i],log=T)
   # }
 }
-for(i in 1:nrow(dat_ground)){
-  # if(dat_ground$elim_area_idx[i]%in%c(5,7)){
-    samp_N_g[i,] <- N_latent[,paste0("N_latent[",dat_ground$elim_area_idx[i],", ",
-                                     dat_ground$period_idx[i],"]")]
-    rem_ll_g[i,] <- dbinom(x=dat_ground$tot_rem[i],size=samp_N_g[i,],
-                           prob=pip_g[,i],log=T)
-    dev_ypred_rem_g[i,] <- dbinom(x=ypred_rem_g[,i],size=samp_N_g[i,],
-                                  prob=pip_g[,i],log=T)
-  # }
-}
-# rem_ll <- rem_ll_a
-# dev_ypred_rem <- dev_ypred_rem_a
-rem_ll <- rbind(rem_ll_a,rem_ll_t,rem_ll_g)
-dev_ypred_rem <- rbind(dev_ypred_rem_a,dev_ypred_rem_t,dev_ypred_rem_t)
+
+rem_ll <- rbind(rem_ll_a,rem_ll_t)
+dev_ypred_rem <- rbind(dev_ypred_rem_a,dev_ypred_rem_t)
 
 dev_y <- colSums(occ_ll) + colSums(rem_ll,na.rm=T)
 dev_ypred <- colSums(dev_ypred_occ) + colSums(dev_ypred_rem,na.rm = T)
@@ -170,21 +158,13 @@ mse_occ <- mse_pred_occ <- rep(NA,nmcmc*nChains)
 for(i in 1:(nmcmc*nChains)){
   mse_occ[i] <- mean((dat_occ$detections - dat_occ$nweeks*pocc[i,])^2)
   mse_pred_occ[i] <- mean((ypred_occ[i,] - dat_occ$nweeks*pocc[i,])^2)
-
-  # samp_r <- r[,dat_rem$rem_typ_idx[i]]
-  # # r <- 1-(1-cpue[i])^dat_rem$eff_hrs_km
-  # # r <- boot::inv.logit(alpha[i,1] + alpha[i,2]*dat_rem$eff_hrs_km_sc[,1])
-  # mse_rem[i] <- mean((dat_rem$removed - N_latent[i,]*samp_r)^2)
-  # mse_pred_rem[i] <- mean((ypred_rem[i,] - N_latent[i,]*samp_r)^2)
 }
 
 ypred_rem_a <- as.matrix(ypred_rem_a)
 ypred_rem_t <- as.matrix(ypred_rem_t)
-ypred_rem_g <- as.matrix(ypred_rem_g)
 N_latent <- as.matrix(N_latent)
 mse_rem_a <- mse_pred_rem_a <- matrix(NA,nrow(dat_aerial),nmcmc*nChains)
 mse_rem_t <- mse_pred_rem_t <- matrix(NA,nrow(dat_trap),nmcmc*nChains)
-mse_rem_g <- mse_pred_rem_g<- matrix(NA,nrow(dat_ground),nmcmc*nChains)
 for(i in 1:nrow(dat_aerial)){
   # if(dat_aerial$elim_area_idx[i]%in%c(5,7)){
     exp_N <- samp_N_a[i,]*pip_a[,i]
@@ -199,18 +179,9 @@ for(i in 1:nrow(dat_trap)){
     mse_pred_rem_t[i,] <- (ypred_rem_t[,i] - exp_N)^2
   # }
  }
-for(i in 1:nrow(dat_ground)){
-  # if(dat_ground$elim_area_idx[i]%in%c(5,7)){
-    exp_N <- samp_N_g[i,]*pip_g[,i]
-    mse_rem_g[i,] <- (dat_ground$tot_rem[i] - exp_N)^2
-    mse_pred_rem_g[i,] <- (ypred_rem_g[,i] - exp_N)^2
-  # }
-}
 
-# mse_rem <- colMeans(mse_rem_a)
-# mse_pred_rem <- colMeans(mse_pred_rem_a)
-mse_rem <- colMeans(rbind(mse_rem_a,mse_rem_t,mse_rem_g),na.rm=T)
-mse_pred_rem <- colMeans(rbind(mse_pred_rem_a,mse_pred_rem_t,mse_pred_rem_g),na.rm=T)
+mse_rem <- colMeans(rbind(mse_rem_a,mse_rem_t),na.rm=T)
+mse_pred_rem <- colMeans(rbind(mse_pred_rem_a,mse_pred_rem_t),na.rm=T)
 
 pVal_occ_mse <- sum(mse_pred_occ>mse_occ)/(nmcmc*nChains)
 pVal_rem_mse <- sum(mse_pred_rem>mse_rem)/(nmcmc*nChains)
@@ -232,12 +203,9 @@ ggplot()+
 ## mean ----------------
 # ypred_rem_a_46 <- ypred_rem_a[,dat_aerial$elim_area_idx%in%c(5,7)]
 # ypred_rem_t_46 <- ypred_rem_t[,dat_trap$elim_area_idx%in%c(5,7)]
-# ypred_rem_g_46 <- ypred_rem_g[,dat_ground$elim_area_idx%in%c(5,7)]
 
-# ypred_rem_mn <- rowMeans(cbind(ypred_rem_a))
-# dat_rem_mn <- mean(c(dat_aerial$tot_rem))
-ypred_rem_mn <- rowMeans(cbind(ypred_rem_a,ypred_rem_t,ypred_rem_g))
-dat_rem_mn <- mean(c(dat_aerial$tot_rem,dat_trap$tot_rem,dat_ground$tot_rem))
+ypred_rem_mn <- rowMeans(cbind(ypred_rem_a,ypred_rem_t))
+dat_rem_mn <- mean(c(dat_aerial$tot_rem,dat_trap$tot_rem))
 pVal_rem_mn <- sum(ypred_rem_mn>dat_rem_mn)/(nmcmc*nChains)
 ggplot()+geom_histogram(aes(x=ypred_rem_mn))+
   geom_vline(xintercept=dat_rem_mn,col="red",lwd=1.5)+
@@ -253,10 +221,8 @@ ggplot()+geom_histogram(aes(x=ypred_occ_mn))+
   ggtitle(paste("pVal =",round(pVal_occ_mn,2)))
 
 ## standard deviation ------------------
-ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a),1,var))
-dat_rem_var <- sqrt(var(c(dat_aerial$tot_rem)))
-ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a,ypred_rem_t,ypred_rem_g),1,var))
-dat_rem_var <- sqrt(var(c(dat_aerial$tot_rem,dat_trap$tot_rem,dat_ground$tot_rem)))
+ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a,ypred_rem_t),1,var))
+dat_rem_var <- sqrt(var(c(dat_aerial$tot_rem,dat_trap$tot_rem)))
 pVal_rem_var <- sum(ypred_rem_var>dat_rem_var)/(nmcmc*nChains)
 ggplot()+geom_histogram(aes(x=ypred_rem_var))+
   geom_vline(xintercept=dat_rem_var,col="red",lwd=1.5)+
