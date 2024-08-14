@@ -4,7 +4,7 @@
 ### Notes: 
 
 # monitors = NA
-# niter=100
+# niter=10000
 # burnProp=0.1
 # nChains=1
 # thin=1
@@ -203,13 +203,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     r_n1 ~ dgamma(1,0.1)
     mu_lam ~ dnorm(0,0.15)
     sd_lam ~ dgamma(1,10)
-    sd_psi ~ dgamma(10,10)
     
     
     for(i in 1:nea){
       log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
-      sd_nb[i] ~ dunif(100,50000)
-      sig2_nb[i] <- sd_nb[i]^2
     }
     
     mu_p ~ dnorm(0,1)
@@ -224,8 +221,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        mu_psi[k,t] <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
-        logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
+        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
+        # logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
         
         #occupancy/detection
         pabs[k,t] <- 1-psi[k,t]
@@ -258,10 +255,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       #abundace/removal process
       for(t in 2:nperiods){
         mu_nb[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
-        p_nb[i,t] <- mu_nb[i,t]/sig2_nb[i]
-        r_nb[i,t] <- (mu_nb[i,t]^2)/(sig2_nb[i]-mu_nb[i,t])
-        N[i,t] ~ dnegbin(prob=p_nb[i,t],size=r_nb[i,t])
-        # N[i,t] ~ dpois(mu_nb[i,t])
+        # p_nb[i,t] <- mu_nb[i,t]/sig2_nb[i]
+        # r_nb[i,t] <- (mu_nb[i,t]^2)/(sig2_nb[i]-mu_nb[i,t])
+        # N[i,t] ~ dnegbin(prob=p_nb[i,t],size=r_nb[i,t])
+        N[i,t] ~ dpois(mu_nb[i,t])
         # N_change[i,t] <- (N[i,t]-N[i,t-1])/N[i,t-1]
       }
     }
@@ -385,7 +382,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   inits <- list(beta=rnorm(nbeta,c(0,0.5),0.1),
                 mu_lam=rnorm(1,0,0.1),
                 sd_lam=rnorm(1,0.1,0.01),
-                sd_nb=apply(yrem,1,max)+300,
                 p_sys=rbeta(1,1,3),
                 p_aerial=rbeta(1,2,1),
                 p_trap=rbeta(1,2,1),
@@ -399,7 +395,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   )
   # inits <- inits[!sapply(inits,is.null)]
   # inits$N[,-1] <- NA
-  inits$N[,1] <- apply(yrem,1,max)*25+5000
+  inits$N[,1] <- apply(yrem,1,max)*25
 
   ## nimble configuration -------------------------------------------------
   mod <- nimbleModel(code = ZIbinomcode,
@@ -429,12 +425,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "pip_a",
                 "pip_g",
                 "pip_t",
-                "sd_nb",
-                # "mu_p",
-                # "sd_p",
-                "sd_psi",
-                # "mu_lam",
-                # "sd_lam",
                 "yrem_pred_aerial",
                 "yrem_pred_ground",
                 "yrem_pred_trap",
