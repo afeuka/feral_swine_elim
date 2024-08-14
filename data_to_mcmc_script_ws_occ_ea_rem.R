@@ -55,7 +55,7 @@ mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            monitors = NA,
                            subset_data=F,
                            niter=10000,
-                           thin=5,
+                           thin=1,
                            burnProp=0.5,
                            nChains=1)
 

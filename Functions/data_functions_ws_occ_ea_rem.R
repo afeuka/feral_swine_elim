@@ -276,13 +276,13 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   #change detections with no trap nights to 0
   subper$detection[subper$detection>subper$trap_nights] <- 0
 
-  list(sysbait_det_eff=subper)
+  list(subper=subper)
 }
-# sysbait_det_eff <- sys$sysbait_det_eff
+# subper <- sys$subper
 
 #grid removals by elimination area
 grid_removals <- function(study_site_grid,
-                          sysbait_det_eff, #output from grid_sys_effort, by subperiod (10 days)
+                          subper, #output from grid_sys_effort, by subperiod (10 days)
                           period#season" or "month"
                           ){
   require(tidyverse)
@@ -339,7 +339,7 @@ grid_removals <- function(study_site_grid,
     select(Date,SiteID,Total,Method,section,Area_Name,site_area_km,ea_area_km) %>% 
     filter(Method!="Night Shoot")
   
-  period_dates <- sysbait_det_eff %>% group_by(period) %>% 
+  period_dates <- subper %>% group_by(period) %>% 
     summarise(per_start=min(subper_start),
               per_end=max(subper_end))
   
@@ -354,10 +354,10 @@ grid_removals <- function(study_site_grid,
   list(rem_site=rem_site)
 }
 
-# sysbait_det_eff <- sys$sysbait_det_eff
+# subper <- sys$subper
 # rem_site <- rem$rem_site
 
-grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperiod
+grid_effort <- function(subper,#output from grid_sysbaittake,by subperiod
                         rem_site, #output from grid_removals
                         study_site_grid,#individual site boundaries
                         grid_typ#"counties" or "watersheds"
@@ -442,37 +442,37 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   eff <- eff[!duplicated(eff),]
 
   #systematic baiting effort hours ---------------
-  sysbait_det_eff$eff_hrs <- rep(0,nrow(sysbait_det_eff)) 
-  for(i in 1:nrow(sysbait_det_eff)){
-    x <- eff[eff$SiteID==sysbait_det_eff$site_idx[i] &
-               eff$date>=sysbait_det_eff$subper_start[i] &
-               eff$date<=sysbait_det_eff$subper_end[i],]
+  subper$eff_hrs <- rep(0,nrow(subper)) 
+  for(i in 1:nrow(subper)){
+    x <- eff[eff$SiteID==subper$site_idx[i] &
+               eff$date>=subper$subper_start[i] &
+               eff$date<=subper$subper_end[i],]
     
     if(nrow(x)>0){
       if(any(x$method%in%c("SysBait","Trap"))){ #systematic baiting effort 
-        sysbait_det_eff$eff_hrs[i] <- sum(subset(x,method=="SysBait" | method=="Trap")$time_hr,na.rm=T)
+        subper$eff_hrs[i] <- sum(subset(x,method=="SysBait" | method=="Trap")$time_hr,na.rm=T)
       }
     }
   }
 
   ##add NAs for missing hours ------------------------
-  sysbait_det_eff$eff_hrs[sysbait_det_eff$eff_hrs==0 & sysbait_det_eff$trap_nights>0] <- NA
+  subper$eff_hrs[subper$eff_hrs==0 & subper$trap_nights>0] <- NA
   
   ##standardize effort by area --------------------
-  sysbait_det_eff <- sysbait_det_eff %>% 
+  subper <- subper %>% 
     left_join(study_site_grid %>% mutate(site_idx=as.character(SiteID)))
-  sysbait_det_eff$eff_hrs_km <- sysbait_det_eff$eff_hrs/sysbait_det_eff$area_km
+  subper$eff_hrs_km <- subper$eff_hrs/subper$area_km
   
   ##add proportion of area covered by feral swine distribution ----------------------
   load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/ssg_nfsp_all.RData")
   
-  sysbait_det_eff <- sysbait_det_eff %>% 
+  subper <- subper %>% 
     left_join(ssg_nfsp %>% select(SiteID,prp_nfs,year) %>% 
                 rename(fy=year) %>% 
                 mutate(site_idx=as.character(as.numeric(SiteID))) %>% 
                 dplyr::select(-SiteID))
   
-  sysbait_det_eff$trap_nights_km <- sysbait_det_eff$trap_nights/sysbait_det_eff$area_km
+  subper$trap_nights_km <- subper$trap_nights/subper$area_km
   
   # removal effort -------------------------------------------------
   ##elimination area - areas ---------------
@@ -491,11 +491,11 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   ##clip removals to systematic baiting -----------------------
   rem_day_ea <- rem_day_ea %>% 
-    filter(Date>=min(sysbait_det_eff$subper_start) &
-             Date<=max(sysbait_det_eff$subper_end))
+    filter(Date>=min(subper$subper_start) &
+             Date<=max(subper$subper_end))
   
   ##clip systematic baiting to removals --------------------
-  sysbait_det_eff <- sysbait_det_eff %>% 
+  subper <- subper %>% 
     filter(subper_start>=min(rem_day_ea$Date) &
              subper_end<=max(rem_day_ea$Date))%>% 
     st_drop_geometry() %>% 
@@ -529,7 +529,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
                                  ea_area_km=area_km))
   
 
-  period_dates <- sysbait_det_eff %>% group_by(period) %>% 
+  period_dates <- subper %>% group_by(period) %>% 
     summarise(per_start=min(subper_start),
               per_end=max(subper_end))
   
@@ -687,6 +687,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   }
   
   list(nlcd_siteid=nlcd_siteid,
-       sysbait_det_eff=sysbait_det_eff,
+       sysbait_det_eff=subper,
        rem_eff_ea=rem_eff_ea)
 }
