@@ -17,6 +17,7 @@ period <- "season"
 study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
 study_site_grid <- study_site_grid %>% rename(elim_area_idx=elm_r_d,
                                               Area_Name=Area_Nm)
+
 if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData"))){
   load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData"))
 } else {
@@ -55,7 +56,7 @@ mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            monitors = NA,
                            subset_data=F,
                            niter=10000,
-                           thin=5,
+                           thin=1,
                            burnProp=0.5,
                            nChains=1)
 

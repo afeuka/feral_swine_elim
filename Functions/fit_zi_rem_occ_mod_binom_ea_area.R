@@ -37,6 +37,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
            area_km=area_m/1e6,
            elim_area_idx= as.numeric(Area_Name)+1)
   
+  ssg_adj <- st_intersects(study_site_grid,remove_self=T)
+  ssg_adj <- as.carAdjacency(ssg_adj)
+  
   sysbait_det_eff$Area_Name[is.na(sysbait_det_eff$Area_Name)] <- 0
   sysbait_det_eff$elim_area_idx <- as.numeric(sysbait_det_eff$Area_Name)+1
 
@@ -85,6 +88,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
               ) %>% 
     rename(period_idx=period) %>% 
     arrange(period_idx,site_idx)
+  
+  dat_occ$trap_nights_km_sc <- scale(dat_occ$trap_nights_km)
 
   elim_site_idx <- dat_occ %>% group_by(site_idx) %>% 
      summarise(elim_area_idx=as.numeric(unique(elim_area_idx))) %>% 
@@ -133,6 +138,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
   }
 
+  dat_aerial$eff_area_hrs_sc <- scale(dat_aerial$eff_area_hrs)
+  dat_trap$eff_area_hrs_sc <- scale(dat_trap$eff_area_hrs)
+  
   remtot <- rem_eff_ea %>% group_by(elim_area_idx,period_idx) %>%
     reframe(removal=sum(tot_rem))
 
@@ -143,12 +151,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
   }
   nfsp_sc <- scale(nfsp)
-  
-  ##covariate correlation-------------------
-  # samp <- sysbait_det_eff %>% left_join(nlcd_siteid %>% mutate(site_idx=as.character(site_idx)) %>% select(-geometry))
-  # samp <- samp %>% select(agri,developed,prp_nfs) %>% distinct()
-  # cor(samp$agri,samp$prp_nfs)
-  # cor(samp$developed,samp$prp_nfs)
   
   ##removal matrix ------------------
   yrem <- matrix(0,nea,nperiods)
@@ -163,7 +165,12 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
    }
 
   #one trap per mi2 -------------------------------
-  mn_te <- 1/2.59
+  mn_te <- (1/2.59) * 
+      attr(dat_occ$trap_nights_km_sc,"scaled:scale") -
+      attr(dat_occ$trap_nights_km_sc,"scaled:center")
+  # mn_te <- mean(dat_occ$trap_nights_km) * 
+  #   attr(dat_occ$trap_nights_km_sc,"scaled:scale") -
+  #   attr(dat_occ$trap_nights_km_sc,"scaled:center")
 
   if(subset_data){
     samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
@@ -192,28 +199,37 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     
     for(i in 1:2){
       alpha[i] ~ dlogis(0,1)
+      delta_t[i] ~ dlogis(0,1)
+      delta_a[i] ~ dlogis(0,1)
     }
     sd_pdet ~ dgamma(10,10)
+    sd_theta_t ~ dgamma(10,10)
+    sd_theta_a ~ dgamma(10,10)
+    
+    sd_psi ~ dgamma(10,10)
     
     p_n1 ~ dbeta(0.1,7)
     r_n1 ~ dgamma(1,0.1)
     mu_lam ~ dnorm(0,0.15)
     sd_lam ~ dgamma(1,10)
+
+    # tau_sa ~ dgamma(10,10)
+    
+    #spatial autocorrelation
+    # sa[1:nsites] ~ dcar_normal(adj[1:L], weights[1:L],
+    #                            num[1:nsites], tau_sa, zero_mean = 1)
+    
+    #mean effort detection probability
+    mu_pdet_mn <- alpha[1] + alpha[2]*mn_te
+    logit(p_sys) ~ dnorm(mu_pdet_mn,sd=sd_pdet)
     
     for(i in 1:nea){
       log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
     }
-    
-    mu_p ~ dnorm(0,1)
-    tau_p ~ dgamma(10,10)
-    sd_p <- sqrt(1/tau_p)
-    
-    logit(p_trap) ~ dnorm(mu_p,sd=sd_p)
-    logit(p_aerial) ~ dnorm(mu_p,sd=sd_p)
-    
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + beta[3]*develop[k] + beta[4]*agri[k]
+        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + 
+          beta[3]*develop[k] + beta[4]*agri[k] #+ sa[k]
         # logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
         
         #occupancy/detection
@@ -225,8 +241,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
         eff_elim[k,t] <- log((pabs[k,t]*(1-elim_prob))/(elim_prob*psi[k,t]))/
                             (log(1-p_sys)) 
         
-        #effective detection given efforet
-        pstar_site[k,t] <- 1-((1-p_sys)^mn_te)^eff_weeks
+        #effective detection given effort
+        pstar_site[k,t] <- 1-(1-p_sys)^eff_weeks
 
         #p(elimination) given effort
         pelim[k,t] <- pabs[k,t]/(pabs[k,t] + psi[k,t]*(1-pstar_site[k,t]))
@@ -247,9 +263,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       #abundace/removal process
       for(t in 2:nperiods){
         mu_nb[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
-        # p_nb[i,t] <- mu_nb[i,t]/sig2_nb[i]
-        # r_nb[i,t] <- (mu_nb[i,t]^2)/(sig2_nb[i]-mu_nb[i,t])
-        # N[i,t] ~ dnegbin(prob=p_nb[i,t],size=r_nb[i,t])
         N[i,t] ~ dpois(mu_nb[i,t])
         # N_change[i,t] <- (N[i,t]-N[i,t-1])/N[i,t-1]
       }
@@ -258,9 +271,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     #abundance
     ##aerial
     for(i in 1:nsamp_aerial){
-      #effort imputation for helicopter data
-      theta_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]] <-
-        1-pow((1-p_aerial),eff_area_a[i])
+      mu_theta_a[i] <- delta_a[1] + delta_a[2]*eff_area_a[i]
+      logit(theta_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]]) ~ 
+        dnorm(mu_theta_a[i],sd=sd_theta_a)
       
       pip_a[i] <-
         avail_fun(pass=pass_idx_a[i],
@@ -276,8 +289,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     ##traps
     for(i in 1:nsamp_trap){
       #removal probability
-      theta_t[pass_idx_t[i],site_idx_t[i],period_idx_t[i]] <-
-        1-(1-p_trap)^eff_area_t[i]
+      mu_theta_t[i] <- delta_t[1] + delta_t[2]*eff_area_t[i]
+      logit(theta_t[pass_idx_t[i],site_idx_t[i],period_idx_t[i]]) ~
+        dnorm(mu_theta_t[i],sd=sd_theta_t)
       
       pip_t[i] <-
         avail_fun(pass=pass_idx_t[i],
@@ -294,7 +308,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     #occupancy
     for(i in 1:nsamp_occ){
       #detection probability
-      # pdet[i] <- 1-(1-p_sys)^trap_nights_km[i]
       mu_pdet[i] <- alpha[1] + alpha[2]*trap_nights_km[i]
       logit(pdet[i]) ~ dnorm(mu_pdet[i],sd=sd_pdet)
       
@@ -308,14 +321,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
 
   ## nimble lists  -------------------------------------------------
   modDat <- list(yrem_trap=dat_trap$tot_rem,
-                 eff_area_t=dat_trap$eff_area_hrs,
+                 eff_area_t=dat_trap$eff_area_hrs_sc[,1],
                  gamma_t=gamma_t,
                  yrem_aerial=dat_aerial$tot_rem,
-                 eff_area_a=dat_aerial$eff_area_hrs,
+                 eff_area_a=dat_aerial$eff_area_hrs_sc[,1],
                  gamma_a=gamma_a,
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
-                 trap_nights_km=dat_occ$trap_nights_km,
+                 trap_nights_km=dat_occ$trap_nights_km_sc[,1],
                  yrem_mat=yrem)
 
   ### constants -----------------------------
@@ -340,17 +353,17 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 pass_idx_t=dat_trap$pass_idx,
                 pass_idx_a=dat_aerial$pass_idx,
                 nsamp_trap=nrow(dat_trap),
-                nsamp_aerial=nrow(dat_aerial)
-                
+                nsamp_aerial=nrow(dat_aerial)#,
+                # adj=ssg_adj$adj,
+                # weights=ssg_adj$weights,
+                # num=ssg_adj$num,
+                # L=length(ssg_adj$adj)
   )
 
   ### initial values -----------------------------
   inits <- list(beta=rnorm(nbeta,c(0,0.5),0.1),
                 mu_lam=rnorm(1,0,0.1),
                 sd_lam=rnorm(1,0.1,0.01),
-                p_sys=rbeta(1,1,3),
-                p_aerial=rbeta(1,2,1),
-                p_trap=rbeta(1,2,1),
                 N = matrix(NA,nea,nperiods),
                 z_site = matrix(1,nsites,nperiods),
                 p_n1 = rnorm(1,0.001,0.0001),
@@ -374,6 +387,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "beta",
                 "alpha",
                 "sd_pdet",
+                "delta_t",
+                "delta_a",
+                "sd_theta_t",
+                "sd_theta_a",
                 "N",
                 "pabs",
                 "p_sys",
@@ -383,9 +400,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "p_n1",
                 "r_n1",
                 "N_latent",
-                # "N_change",
-                "p_trap",
-                "p_aerial",
                 "pip_a",
                 "pip_t",
                 "yrem_pred_aerial",
@@ -405,8 +419,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       # setSeed = 1:nChains,
                       nchains = nChains)
   
-  # Cmod$mod$sd_psi
-  # Cmod$mod$N
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
