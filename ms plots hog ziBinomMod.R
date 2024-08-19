@@ -23,7 +23,7 @@ elim_areas <- study_site_grid %>%
 load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_25JUL24_multi_lambda_21_24.Rdata")
 
 ## removal data -----------
-dat_rem <- rbind.data.frame(dat_aerial,dat_trap,dat_ground)
+dat_rem <- rbind.data.frame(dat_aerial,dat_trap)
 dat_rem_sum <- dat_rem %>% 
   group_by(Area_Name,method,month=floor_date(Date,"month")) %>% 
   summarise(Season=min(Date),
@@ -773,7 +773,7 @@ ggsave(filename="./Model Outputs/Plots/Manuscript/abundance_trend_removal.jpeg",
        device="jpeg",width=10,height=6,units="in")
 
 #### density EA 4 and 6 -------------------------
-axis_trans_d<- 300
+axis_trans_d<- 200
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6)),
               aes(x=per_start,ymin=lci_dens,ymax=uci_dens),alpha=0.2)+
@@ -799,7 +799,7 @@ ggsave(filename="./Model Outputs/Plots/Manuscript/density_trend_removal.jpeg",
        device="jpeg",width=10,height=6,units="in")
 
 ####standardized abundance EA 4 and 6 -------------------------
-axis_scale <- 600
+axis_scale <- 700
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6)& period_idx!=1),
               aes(x=per_start,ymin=lci_std,ymax=uci_std),alpha=0.2)+
