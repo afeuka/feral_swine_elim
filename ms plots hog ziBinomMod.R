@@ -20,7 +20,7 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_25JUL24_multi_lambda_21_24.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_21AUG24_logit_det.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
@@ -1140,14 +1140,18 @@ sysbait_det_eff %>%
   summarise(dets=sum(detection),
             trap_nights=sum(trap_nights))
 
+# subfolder <- "NFSP"
 #save posterior summaries ---------------------------------
-save(eff_sum_sf,N_sum_sf,N_yr_sum,p_rem_sum,pabs_sum_ea,pabs_sum,
+st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"))
+st_write(N_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"))
+st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"))
+save(N_yr_sum,pabs_sum_ea,pabs_sum,
      pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
-     pelim_ea,pelim_ea_fy,pelim_sum,pelim_sum_fy,rem_df,
-     det_aerial_sum,det_trap_sum,det_ground_sum,
+     pelim_ea,pelim_ea_fy,pelim_sum,pelim_sum_fy,
+     det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
-     dat_occ,dat_rem,dat_rem_sum,
-     file="./Model outputs/posterior_summaries_25JUL24.RData")
+     dat_occ,dat_rem,dat_rem_sum,elim_thresh,
+     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_21AUG24.RData"))
 
 
           

@@ -18,7 +18,7 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load posterior summaries ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/posterior_summaries_25JUL24.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/posterior_summaries_21AUG24.Rdata")
 
 #absence probability --------------------
 ## map to study site -------------------
