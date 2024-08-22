@@ -20,7 +20,13 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_25JUL24_multi_lambda_21_24.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_25JUL24_multi_lambda_21_24.Rdata")
+
+if(nbeta==3){
+  subfolder<-"No NFSP"
+} else {
+  subfolder<-"NFSP"
+}
 
 ## removal data -----------
 dat_rem <- rbind.data.frame(dat_aerial,dat_trap)
@@ -51,7 +57,7 @@ nChains <- length(samples)
 #         axis.ticks = element_blank(),
 #         axis.text = element_blank(),
 #         text=element_text(size=15))
-# ggsave(filename = "./Model outputs/Plots/Manuscript/mo_map.jpeg",
+# ggsave(filename = "./Model outputs/Plots/",subfolder,"/mo_map.jpeg",
 #        width=7,height=5,units="in",device="jpeg")
 
 #trace plots -------------------------------
@@ -61,7 +67,12 @@ beta<- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
                    chain=i)})),
   samp=rep(1:nmcmc,nChains))
 
-beta_names <- c("Intercept","Feral swine range","Development","Agriculture")
+if(nbeta==3){
+  beta_names <- c("Intercept","Development","Agriculture")
+} else {
+  beta_names <- c("Intercept","Feral swine range","Development","Agriculture")
+}
+
 colnames(beta)[1:nbeta] <- beta_names
 
 beta_long <- beta %>% 
@@ -74,7 +85,7 @@ g_b<- ggplot(beta_long) + geom_line(aes(x=samp,y=value,col=chain))+
 g_b
 
 ggsave(g_b, 
-       filename = "./Model outputs/Plots/Manuscript/Trace/beta_trace.jpeg",
+       filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/beta_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
 ##initial n values ------------------
@@ -100,40 +111,53 @@ g_p <-ggplot(p_n1_long) + geom_line(aes(x=samp,y=p_n1,col=chain))
 g_n1 <- gridExtra::grid.arrange(g_r,g_p)
 
 ggsave(g_n1, 
-       filename = "./Model outputs/Plots/Manuscript/Trace/n1_params_trace.jpeg",
+       filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/n1_params_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
-##catch per unit effort ----------------------
-cpue <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
-  cbind.data.frame(samples[[i]][,grepl("p_",colnames(samples[[i]])) &
-                                  !grepl("p_n1",colnames(samples[[i]]))],
-                   chain=i)})),
+## effort removal ----------------------
+delta <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][,grepl("delta",colnames(samples[[i]]))],chain=i)})),
   samp=rep(1:nmcmc,nChains))
 
-cpue_names <- c("Aerial","Ground","Systematic Baiting","Trap")
-colnames(cpue)[1:4] <- cpue_names
+cpue_names <- c("Aerial Intercept","Aerial Slope","Trap Intercept","Trap Slope")
+colnames(delta)[1:4] <- cpue_names
 
-cpue_long <- cpue %>% 
-  pivot_longer(cols=all_of(1:4),names_to="cpue",values_to="value") %>% 
+delta_long <- delta %>% 
+  pivot_longer(cols=all_of(1:4),names_to="delta",values_to="value") %>% 
   mutate(chain=factor(chain))
 
-g_a<- ggplot(cpue_long %>% filter(cpue=="Aerial")) + 
+g_a<- ggplot(delta_long %>% filter(grepl("Aerial",delta))) + 
   geom_line(aes(x=samp,y=value,col=chain))+
-  ylab("Aerial")
-g_g<-ggplot(cpue_long %>% filter(cpue=="Ground")) + 
+  ylab("Coefficient estimate") +
+  facet_wrap(.~delta)
+g_t<- ggplot(delta_long %>% filter(grepl("Trap",delta))) + 
   geom_line(aes(x=samp,y=value,col=chain))+
-  ylab("Ground")
-g_s<-ggplot(cpue_long %>% filter(cpue=="Systematic Baiting")) + 
-  geom_line(aes(x=samp,y=value,col=chain))+
-  ylab("Systematic Baiting")
-g_t<-ggplot(cpue_long %>% filter(cpue=="Trap")) + 
-  geom_line(aes(x=samp,y=value,col=chain))+
- ylab("Trap")
-g_cpue<- gridExtra::grid.arrange(g_a,g_g,g_t,g_s)
+  ylab("Coefficient estimate") +
+  facet_wrap(.~delta)
 
-ggsave(g_cpue, 
-       filename = "./Model outputs/Plots/Manuscript/Trace/cpue_trace.jpeg",
+## effort systematic baiting -------------------
+alpha <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][,grepl("alpha",colnames(samples[[i]]))],chain=i)})),
+  samp=rep(1:nmcmc,nChains))
+
+alpha_names <- c("Systematic Baiting Intercept","Systematic Baiting Slope")
+colnames(alpha)[1:2] <- alpha_names
+
+alpha_long <- alpha %>% 
+  pivot_longer(cols=all_of(1:2),names_to="alpha",values_to="value") %>% 
+  mutate(chain=factor(chain))
+
+g_s<- ggplot(alpha_long) + 
+  geom_line(aes(x=samp,y=value,col=chain))+
+  ylab("Coefficient estimate") +
+  facet_wrap(.~alpha)
+
+g_alpha<- gridExtra::grid.arrange(g_a,g_t,g_s)
+
+ggsave(g_alpha, 
+       filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/detection_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
+
 
 ##lambda -----------------
 lambda <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
@@ -143,8 +167,11 @@ lambda <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
 
 colnames(lambda)[1] <- "Outside Elimination Areas"
 colnames(lambda)[2:nea] <- paste("Elimination Area",1:(nea-1))
+
+lambda <- lambda %>% select(c("Elimination Area 4","Elimination Area 6","chain","samp"))
+
 lambda_long <- lambda %>% 
-  pivot_longer(cols=all_of(1:nea),names_to="elim_area",values_to="value") %>% 
+  pivot_longer(cols=all_of(1:2),names_to="elim_area",values_to="value") %>% 
   mutate(chain=factor(chain))
 
 g_l <- ggplot(lambda_long) + geom_line(aes(x=samp,y=value,col=chain))+
@@ -153,10 +180,10 @@ g_l <- ggplot(lambda_long) + geom_line(aes(x=samp,y=value,col=chain))+
 g_l
 
 ggsave(g_l, 
-       filename = "./Model outputs/Plots/Manuscript/Trace/lambda_trace.jpeg",
+       filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/lambda_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
-rm(g_l,g_b,g_cpue,g_a,g_t,g_g,g_n1,g_r,g_p,g_s)
+rm(g_l,g_b,g_a,g_t,g_n1,g_r,g_p)
 
 #occupancy regression---------------------
 beta_long %>% 
@@ -277,13 +304,13 @@ ggplot()+
         plot.margin = margin(1,1,1,1, "cm"),
         text=element_text(size=15))
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_all_yrs.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pabs_all_yrs.jpeg"),
        device="jpeg",width=8,height=10,units="in")
 
 ##by elimination area and fy ------------------------------
 pabs_sum_fy <- pabs_sum_fy %>% st_intersection(elim_areas %>% select(Area_Name))
 
-elim_thresh <- 0.5
+elim_thresh <- 0.95
   
 # pabs_prop_thresh <- pabs_sum_fy %>% st_drop_geometry() %>% 
 #   group_by(Area_Name,fy) %>% 
@@ -308,7 +335,7 @@ elim_thresh <- 0.5
 #   theme(text=element_text(size=15))+
 #   guides(color="none")
 
-# ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pelim_elim_areas_fy_thresh.jpeg"),
+# ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pelim_elim_areas_fy_thresh.jpeg"),
 #        device="jpeg",width=10,height=5,units="in")
 
 ##by elimination area and season --------------------
@@ -358,11 +385,10 @@ ggplot(pabs_thresh)+
   theme(text=element_text(size=15))+
   guides(color="none")
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_over50_season_ea.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pabs_over",elim_thresh,"_season_ea.jpeg"),
        device="jpeg",width=10,height=5,units="in")
 
 ## extent of p(abs) threshold ----------------------
-elim_thresh<-0.5
 pabs_long$above_thresh <- ifelse(pabs_long$value>elim_thresh,1,0)
 pabs_long <- pabs_long %>% left_join(study_site_grid %>% 
                           st_drop_geometry() %>% 
@@ -385,22 +411,21 @@ pabs_thresh_ext <- pabs_long %>%
             uci_prop=uci/tot_area_km)%>% 
   left_join(dat_occ %>% select(period_idx,per_start) %>% distinct())
 
-ggplot(pabs_thresh_ext)+ geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
+ggplot(pabs_thresh_ext)+ 
+  geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.5)+
   geom_line(aes(x=per_start,y=mn),lwd=1)+
   xlab("Season")+
-  ylab(expression(paste("K",m^2," with > 0.75 p(elimination)")))+
-  ylim(0,tot_area_km/4)
+  ylab(expression(paste("K",m^2," with > 0.95 p(elimination)")))
 
-ggsave(filename="./Model outputs/Plots/km2_eliminated_75.jpeg",
+ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/km2_eliminated_",elim_thresh,".jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
 ggplot(pabs_thresh_ext)+ geom_ribbon(aes(x=per_start,ymin=lci_prop,ymax=uci_prop),alpha=0.5)+
   geom_line(aes(x=per_start,y=mn_prop),lwd=1)+
   xlab("Season")+
-  ylab("Proportion of study area with p(elimination) > 0.75")+
-  ylim(0,0.25)
+  ylab("Proportion of study area with p(elimination) > 0.95")
 
-ggsave(filename="./Model outputs/Plots/prop_eliminated_75.jpeg",
+ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/prop_eliminated_",elim_thresh,".jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
 
@@ -429,7 +454,7 @@ pabs_thresh_yr <- pabs_long %>%
             md_prop=md/tot_area_km,
             lci_prop=lci/tot_area_km,
             uci_prop=uci/tot_area_km)
-write.csv(pabs_thresh_yr,paste0("./Model outputs/area_above_,",elim_thresh,"_table.csv"))
+write.csv(pabs_thresh_yr,paste0("./Model outputs/Plots/",subfolder,"/area_above_,",elim_thresh,"_table.csv"))
 
 ##median p(abs) by season and ea -----------------------
 pabs_sum_ea <- pabs_long %>% 
@@ -455,7 +480,7 @@ ggplot(pabs_sum_ea %>% filter(Area_Name!="Outside EAs"))+
   theme(text=element_text(size=15))+
   guides(color="none")
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_md_season_ea.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pabs_md_season_ea.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
 #calculate by fy all sites
@@ -475,21 +500,11 @@ pabs_sum %>%
   summarise(mn=mean(mn))
 
 #detection probability with trap effort -------------------
-if(!exists("cpue")){
-  cpue <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
-    cbind.data.frame(samples[[i]][,grepl("p_",colnames(samples[[i]])) &
-                                    !grepl("p_n1",colnames(samples[[i]]))],
-                     chain=i)})),
-    samp=rep(1:nmcmc,nChains))
-  
-  cpue_names <- c("Aerial","Ground","Systematic Baiting","Trap")
-  colnames(cpue)[1:4] <- cpue_names
-}
-p_sys <- cpue %>% select(`Systematic Baiting`,chain,samp)
+sys_eff_sc <- seq(min(dat_occ$trap_nights_km_sc),max(dat_occ$trap_nights_km_sc),by=0.5)
+sys_eff <- sys_eff_sc * attr(dat_occ$trap_nights_km_sc,"scaled:scale") +
+  attr(dat_occ$trap_nights_km_sc,"scaled:center")
 
-sys_eff <- seq(min(dat_occ$trap_nights_km),max(dat_occ$trap_nights_km),by=0.5)
-
-det <- sapply(1:(nmcmc*nChains),function(i)1-(1-p_sys[i,1])^sys_eff)
+det <- sapply(1:(nmcmc*nChains),function(i)boot::inv.logit(alpha[i,1] + alpha[i,2]*sys_eff_sc))
 
 det_sum <- data.frame(traps_km=sys_eff,
                       mn=rowMeans(det),
@@ -504,7 +519,7 @@ ggplot(det_sum)+
   xlab(expression(paste("Bait stations per k",m^2)))+
   theme(text=element_text(size=15))
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/occ_det_eff_curve.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/occ_det_eff_curve.jpeg"),
        device="jpeg",width=7,height=5,units="in")
 
 #conditional absence probability maps --------------------
@@ -579,7 +594,7 @@ pelim_sum_fy <- pelim_sum %>% group_by(fy,site_idx) %>%
 #           plot.margin = margin(1,1,1,1, "cm"),
 #           text=element_text(size=15))+
 #     ggtitle(paste("FY",fys[i]))
-#   ggsave(g[[i]],filename=paste0("./Model Outputs/Plots/Manuscript/pelim_fy",fys[i],".jpeg"),
+#   ggsave(g[[i]],filename=paste0("./Model Outputs/Plots/",subfolder,"/pelim_fy",fys[i],".jpeg"),
 #          device="jpeg",width=10,height=5,units="in")
 # }
 # g[[i]]
@@ -600,7 +615,7 @@ ggplot()+
         plot.margin = margin(1,1,1,1, "cm"),
         text=element_text(size=15))
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pelim_all_yrs.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pelim_all_yrs.jpeg"),
        device="jpeg",width=8,height=10,units="in")
 
 #calculate by fy all sites
@@ -678,7 +693,7 @@ ggplot()+
   theme(plot.margin = margin(1,1,1,1, "cm"),
         text=element_text(size=15))
 
-ggsave(filename="./Model Outputs/Plots/Manuscript/no_samp_ws_summer2023.jpeg",
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/no_samp_ws_summer2023.jpeg"),
        device="jpeg",width=10,height=5,units="in")
 
 eff_sum[which.min(eff_sum$mn),]
@@ -709,6 +724,8 @@ N_sum$fy <- N_sum$year
 N_sum$fy[month(N_sum$per_start)%in%c(10:12)] <- 
   N_sum$fy[month(N_sum$per_start)%in%c(10:12)] +1
 
+N_sum <- N_sum %>% filter(elim_area_idx%in%c(5,7))
+
 #standardized abundance
 all_N <- unlist(c(N_sum[,c("mn","md","lci","uci")]))
 N_ss <- sqrt(sum(all_N^2)/(length(all_N)-1))
@@ -735,8 +752,8 @@ N_sum_sf <- N_sum_sf %>% mutate(mn_dens=mn/ea_area_km,
                                 lci_dens=lci/ea_area_km,
                                 uci_dens=uci/ea_area_km)
 
-N_sum_sf$Area_Name_label <- paste("Elimination Area ",N_sum_sf$Area_Name)
-dat_rem_sum$Area_Name_label <- paste("Elimination Area ",dat_rem_sum$Area_Name)
+N_sum_sf$Area_Name_label <- paste("Elimination Area",N_sum_sf$Area_Name)
+dat_rem_sum$Area_Name_label <- paste("Elimination Area",dat_rem_sum$Area_Name)
 
 N_sum_4 <- N_sum_sf %>% st_drop_geometry() %>% filter(Area_Name==4)
 N_sum_4[which.min(N_sum_4$mn_dens),]
@@ -747,7 +764,7 @@ N_sum_6[which.min(N_sum_6$mn_dens),]
 N_sum_6[which.max(N_sum_6$mn_dens),]
 
 ####raw abundance EA 4 and 6 -------------------------
-axis_trans<- 0.015
+axis_trans<- 0.01
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6) & period_idx!=1),
               aes(x=per_start,ymin=lci,ymax=uci),alpha=0.2)+
@@ -769,7 +786,7 @@ ggplot()+
                      values=scales::hue_pal()(6)[c(4,6)])+
   guides(color="none")+
   theme(text=element_text(size=15))
-ggsave(filename="./Model Outputs/Plots/Manuscript/abundance_trend_removal.jpeg",
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
 #### density EA 4 and 6 -------------------------
@@ -795,11 +812,11 @@ ggplot()+
                      values=scales::hue_pal()(6)[c(4,6)])+
   guides(color="none")+
   theme(text=element_text(size=15))
-ggsave(filename="./Model Outputs/Plots/Manuscript/density_trend_removal.jpeg",
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
 ####standardized abundance EA 4 and 6 -------------------------
-axis_scale <- 700
+axis_scale <- 1800
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6)& period_idx!=1),
               aes(x=per_start,ymin=lci_std,ymax=uci_std),alpha=0.2)+
@@ -822,7 +839,7 @@ ggplot()+
   guides(color="none")+
   theme(text=element_text(size=15))
 
-ggsave(filename="./Model Outputs/Plots/Manuscript/std_abundance_trend_removal.jpeg",
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/std_abundance_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
 ## abundance trends ------------------------------
@@ -958,6 +975,7 @@ N_long <- N_long %>% left_join(per_idx)
 N_yr <- N_long %>% filter(month(per_start)==10 | (month(per_start)==7 & year==2023))
 N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
 
+N_yr <- N_yr %>% filter(elim_area_idx%in%c(5,7))
 N_yr$value_prev<- NA
 for(i in 1:nrow(N_yr)){
   if(N_yr$per_temp[i]>1){
@@ -977,103 +995,58 @@ N_yr_sum <- N_yr %>%
             lci=quantile(per_change,0.025,na.rm=T)*100,
             uci=quantile(per_change,0.975,na.rm=T)*100) 
 
-write.csv(N_yr_sum,"./Model outputs/N_change_table.csv")
+write.csv(N_yr_sum,paste0("./Model outputs/Plots/",subfolder,"/N_change_table.csv"))
 
 
 # removal probability -----------------
-if(!exists("cpue")){
-  cpue <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
-    cbind.data.frame(samples[[i]][,grepl("p_",colnames(samples[[i]])) &
-                                    !grepl("p_n1",colnames(samples[[i]]))],
-                     chain=i)})),
-    samp=rep(1:nmcmc,nChains))
-  
-  cpue_names <- c("Aerial","Ground","Systematic Baiting","Trap")
-  colnames(cpue)[1:4] <- cpue_names
-}
-
-p_rem <- cpue %>% select(Aerial,Ground,Trap,chain,samp)
-p_rem_sum <- p_rem %>%
-  pivot_longer(cols=all_of(1:3),names_to="rem_typ",values_to="value") %>%
-  group_by(rem_typ) %>%
-  summarise(mn=mean(value),
-            md=median(value),
-            lci=quantile(value,0.025),
-            uci=quantile(value,0.975))
-p_rem_sum
-
-## aerial --------------------------
-aerial_eff <- seq(min(dat_aerial$eff_area_hrs),max(dat_aerial$eff_area_hrs),by=0.01)
+## aerial ----------------
+aerial_eff_sc <- seq(min(dat_aerial$eff_area_hrs),max(dat_aerial$eff_area_hrs),by=0.005)
+aerial_eff <- aerial_eff_sc * attr(dat_aerial$eff_area_hrs_sc,"scaled:scale") +
+  attr(dat_aerial$eff_area_hrs_sc,"scaled:center")
 aerial_area_mn <- mean(dat_aerial$prop_ea_impact[dat_aerial$prop_ea_impact!=0])
-det_aerial <- sapply(1:(nmcmc*nChains),function(i){
-  aerial_area_mn*(1-(1-p_rem[i,"Aerial"])^aerial_eff)})
 
+det_a <- sapply(1:(nmcmc*nChains),function(i){aerial_area_mn*
+    boot::inv.logit(delta$`Aerial Intercept`[i] + delta$`Aerial Slope`[i]*aerial_eff_sc)})
 
-det_aerial_sum <- data.frame(flight_hrs_km=aerial_eff,
-                      mn=rowMeans(det_aerial),
-                      md=sapply(1:nrow(det_aerial),function(i)quantile(det_aerial[i,],prob=0.5)),
-                      lci=sapply(1:nrow(det_aerial),function(i)quantile(det_aerial[i,],prob=0.025)),
-                      uci=sapply(1:nrow(det_aerial),function(i)quantile(det_aerial[i,],prob=0.975)))
-g_a <- ggplot(det_aerial_sum)+
-  geom_ribbon(aes(x=flight_hrs_km,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=flight_hrs_km,y=mn))+
-  ylab("Removal rate")+
-  xlab(expression(paste("Flight hours per k",m^2)))+
-  ggtitle("Aerial Operations")+
+det_a_sum <- data.frame(eff_area_hrs=aerial_eff,
+                        mn=rowMeans(det_a),
+                        md=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.5)),
+                        lci=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.025)),
+                        uci=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.975)))
+
+g_a <- ggplot(det_a_sum)+
+  geom_ribbon(aes(x=eff_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
+  geom_line(aes(x=eff_area_hrs,y=mn))+
+  ylab("Detection probability")+
+  xlab(expression(paste("Hours flown per k",m^2)))+
   theme(text=element_text(size=15))
 
-# ggsave(g_a,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_aerial.jpeg"),
-#        device="jpeg",width=7,height=5,units="in")
-
-## trapping --------------------------
-trap_eff <- seq(min(dat_trap$eff_area_hrs),max(dat_trap$eff_area_hrs),by=0.01)
+## trap ----------------------
+trap_eff_sc <- seq(min(dat_trap$eff_area_hrs),max(dat_trap$eff_area_hrs),by=0.05)
+trap_eff <- trap_eff_sc * attr(dat_trap$eff_area_hrs_sc,"scaled:scale") +
+  attr(dat_trap$eff_area_hrs_sc,"scaled:center")
 trap_area_mn <- mean(dat_trap$prop_ea_impact[dat_trap$prop_ea_impact!=0])
-det_trap <- sapply(1:(nmcmc*nChains),function(i){
-  trap_area_mn*(1-(1-p_rem[i,"Trap"])^trap_eff)})
 
-det_trap_sum <- data.frame(trap_hrs_km=trap_eff,
-                             mn=rowMeans(det_trap),
-                             md=sapply(1:nrow(det_trap),function(i)quantile(det_trap[i,],prob=0.5)),
-                             lci=sapply(1:nrow(det_trap),function(i)quantile(det_trap[i,],prob=0.025)),
-                             uci=sapply(1:nrow(det_trap),function(i)quantile(det_trap[i,],prob=0.975)))
-g_t <- ggplot(det_trap_sum)+
-  geom_ribbon(aes(x=trap_hrs_km,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=trap_hrs_km,y=mn))+
-  xlim(0,2.55)+
-  ylab("Removal rate")+
-  xlab(expression(paste("Trapping hours per k",m^2)))+
-  ggtitle("Trapping")+
+det_t <- sapply(1:(nmcmc*nChains),function(i){trap_area_mn*
+    boot::inv.logit(delta$`Trap Intercept`[i] + delta$`Trap Slope`[i]*trap_eff_sc)})
+
+det_t_sum <- data.frame(eff_area_hrs=trap_eff,
+                        mn=rowMeans(det_t),
+                        md=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.5)),
+                        lci=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.025)),
+                        uci=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.975)))
+
+g_t <- ggplot(det_t_sum)+
+  geom_ribbon(aes(x=eff_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
+  geom_line(aes(x=eff_area_hrs,y=mn))+
+  ylab("Detection probability")+
+  xlab(expression(paste("Hours spent trapping per k",m^2)))+
   theme(text=element_text(size=15))
 
-# ggsave(g_t,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_trap.jpeg"),
-       # device="jpeg",width=7,height=5,units="in")
+##all together --------------------
+g_all <- gridExtra::arrangeGrob(g_a+ylim(0,0.001), g_t+ylim(0,0.001),nrow=1) #generates g
 
-## ground -------------------------
-ground_eff <- seq(min(dat_ground$eff_area_events),max(dat_ground$eff_area_events),by=0.01)
-ground_area_mn <- mean(dat_ground$prop_ea_impact[dat_ground$prop_ea_impact!=0])
-det_ground <- sapply(1:(nmcmc*nChains),function(i){
-  ground_area_mn*(1-(1-p_rem[i,"Ground"])^ground_eff)})
-
-det_ground_sum <- data.frame(events_km=ground_eff,
-                             mn=rowMeans(det_ground),
-                             md=sapply(1:nrow(det_ground),function(i)quantile(det_ground[i,],prob=0.5)),
-                             lci=sapply(1:nrow(det_ground),function(i)quantile(det_ground[i,],prob=0.025)),
-                             uci=sapply(1:nrow(det_ground),function(i)quantile(det_ground[i,],prob=0.975)))
-g_g<- ggplot(det_ground_sum)+
-  geom_ribbon(aes(x=events_km,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=events_km,y=mn))+
-  ylab("Removal rate")+
-  xlab(expression(paste("No. of ground shooting events per k",m^2)))+
-  ggtitle("Ground Shooting")+
-  theme(text=element_text(size=15))
-
-# ggsave(g_g,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_ground.jpeg"),
-       # device="jpeg",width=7,height=5,units="in")
-
-## all together --------------------
-g_all <- gridExtra::arrangeGrob(g_a+ylim(0,0.035), g_t+ylim(0,0.035), g_g+ylim(0,0.035),nrow=1) #generates g
-
-ggsave(g_all,file=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_all.jpeg"),
+ggsave(g_all,file=paste0("./Model Outputs/Plots/",subfolder,"/rem_det_curve_all.jpeg"),
        device="jpeg",width=13,height=6,units="in")
 
 ##removal comparisons --------------------
@@ -1120,7 +1093,7 @@ dat_rem_sum %>%
   scale_fill_discrete(name="Removal method")+
   xlab("Season")+ylab("No. feral swine removed")+
   theme(text=element_text(size=15))
-ggsave(filename = "./Model outputs/Plots/Manuscript/raw_removal_ea.jpeg",
+ggsave(filename = "./Model outputs/Plots/",subfolder,"/Raw Data/raw_removal_ea.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
 #effort ---------------------
@@ -1132,7 +1105,7 @@ dat_rem_sum %>%
   scale_fill_discrete(name="Removal method")+
   xlab("Season")+ylab("No. hours spent removing feral swine")+
   theme(text=element_text(size=15))
-ggsave(filename = "./Model outputs/Plots/raw_effort_hours.jpeg",
+ggsave(filename = "./Model outputs/Plots/Raw Data/raw_effort_hours.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
 #raw cpue -------------------
@@ -1145,7 +1118,7 @@ dat_rem_sum %>%
   xlab("Season")+ylab("No. of pigs removed per hour of effort")+
   theme(text=element_text(size=15))
 
-ggsave(filename = "./Model outputs/Plots/raw_cpue.jpeg",
+ggsave(filename = "./Model outputs/Plots/Raw Data/raw_cpue.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
 # summary stats ------------------
