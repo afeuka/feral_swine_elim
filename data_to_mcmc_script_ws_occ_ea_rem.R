@@ -12,6 +12,7 @@ library(snow)
 
 setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/feral_swine_elim")
 source("./Functions/data_functions_ws_occ_ea_rem.R")
+
 grid_typ <- "watersheds"
 period <- "season"
 study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
@@ -75,9 +76,9 @@ nbeta <- mcmc.out$nbeta
 
 ##parallel --------------------
 nChains <- 3
-niter <- 300000
-burnProp <- 0.75
-thin <- 5
+niter <- 500000
+burnProp <- 0.8
+thin <- 10
 
 mcmcPar <- function(j){
   samp <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
@@ -117,7 +118,8 @@ nperiods <- parSamples[[1]]$nperiods
 nbeta <- parSamples[[1]]$nbeta
 agri <- parSamples[[1]]$agri
 develop <- parSamples[[1]]$develop
+mn_te <- parSamples[[1]]$mn_te
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
-     dat_trap,dat_ground,dat_aerial,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_14AUG24_logit_det.Rdata")
+     dat_trap,dat_aerial,mn_te,
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_21AUG24_logit_det.Rdata")
