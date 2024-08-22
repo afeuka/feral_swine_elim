@@ -21,6 +21,12 @@ if(class(samples)=="list"){
   nmcmc <- nrow(samples)
 }
 
+if(nbeta==3){
+  subfolder<-"No NFSP"
+} else {
+  subfolder<-"NFSP"
+}
+
 #occupancy ----------------------
 if(nChains>1){
   psi <- 1- do.call("rbind",lapply(1:nChains,function(i){samples[[i]][,grep("pabs",colnames(samples[[i]]))]}))
@@ -144,13 +150,17 @@ ggplot()+
   geom_histogram(aes(x=colSums(dev_ypred_occ),fill="predictions"),alpha=0.5)+
   geom_histogram(aes(x=colSums(occ_ll),fill="data"),alpha=0.5)+
   xlab('loglikelihood - occupancy')+
-  ggtitle(paste("pVal =",pVal_occ))
+  ggtitle(paste("pVal =",round(pVal_occ,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_occ_ll.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ggplot()+
   geom_histogram(aes(x=colSums(dev_ypred_rem,na.rm=T),fill="predictions"),alpha=0.5)+
   geom_histogram(aes(x=colSums(rem_ll,na.rm=T),fill="data"),alpha=0.5)+
   xlab('loglikelihood - abundance')+
-  ggtitle(paste("pVal =",pVal_rem))
+  ggtitle(paste("pVal =",round(pVal_rem,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_rem_ll.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 #mean squared error -----------------------------
 ypred_occ <- as.matrix(ypred_occ)
@@ -190,13 +200,17 @@ ggplot()+
   geom_histogram(aes(x=mse_pred_occ,fill="predictions"),alpha=0.5)+
   geom_histogram(aes(x=mse_occ,fill="data"),alpha=0.5)+
   xlab('mse - occupancy')+
-  ggtitle(paste("pVal =",pVal_occ_mse))
+  ggtitle(paste("pVal =",round(pVal_occ_mse,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_occ_mse.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ggplot()+
   geom_histogram(aes(x=mse_pred_rem,fill="predictions"),alpha=0.5)+
   geom_histogram(aes(x=mse_rem,fill="data"),alpha=0.5)+
   xlab('mse - abundance')+
-  ggtitle(paste("pVal =",pVal_rem_mse))
+  ggtitle(paste("pVal =",round(pVal_rem_mse,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_rem_mse.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 
 #p-value mean and var stats -------------------
@@ -211,6 +225,8 @@ ggplot()+geom_histogram(aes(x=ypred_rem_mn))+
   geom_vline(xintercept=dat_rem_mn,col="red",lwd=1.5)+
   xlab("mean - removal")+
   ggtitle(paste("pVal =",round(pVal_rem_mn,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_rem_mn.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ypred_occ_mn <- rowMeans(ypred_occ)
 dat_occ_mn <- mean(dat_occ$detections)
@@ -219,6 +235,8 @@ ggplot()+geom_histogram(aes(x=ypred_occ_mn))+
   geom_vline(xintercept=dat_occ_mn,col="red",lwd=1.5)+
   xlab("mean - occupancy")+
   ggtitle(paste("pVal =",round(pVal_occ_mn,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_occ_mn.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ## standard deviation ------------------
 ypred_rem_var <- sqrt(apply(cbind(ypred_rem_a,ypred_rem_t),1,var))
@@ -228,6 +246,8 @@ ggplot()+geom_histogram(aes(x=ypred_rem_var))+
   geom_vline(xintercept=dat_rem_var,col="red",lwd=1.5)+
   xlab("sd - removal")+
   ggtitle(paste("pVal =",round(pVal_rem_var,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_rem_sd.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ypred_occ_var <- sqrt(apply(ypred_occ,1,var))
 dat_occ_var <- sqrt(var(dat_occ$detections))
@@ -236,6 +256,8 @@ ggplot()+geom_histogram(aes(x=ypred_occ_var))+
   geom_vline(xintercept=dat_occ_var,col="red",lwd=1.5)+
   xlab("sd - occupancy")+
   ggtitle(paste("pVal =",round(pVal_occ_var,2)))
+ggsave(filename = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/pval_occ_sd.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 pVal_rem_mn
 pVal_occ_mn
@@ -246,7 +268,7 @@ save(auc_prev_bin,auc_prev_pocc,auc_occ,
      pVal_ll,pVal_occ,pVal_rem,
      pVal_occ_mse,pVal_rem_mse,
      pVal_rem_mn,pVal_occ_mn,pVal_rem_var,pVal_occ_var,
-     file = "C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/modval_wi_occ_rem_08AUG24.Rdata")
+     file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/modval_wi_occ_rem_16AUG24.Rdata"))
 
 #posterior predictive checks ---------------------
 samp_rem <- dat_aerial %>% 
