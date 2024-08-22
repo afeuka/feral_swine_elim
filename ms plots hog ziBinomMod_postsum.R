@@ -18,7 +18,8 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load posterior summaries ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/posterior_summaries_21AUG24.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/NFSP/posterior_summaries_21AUG24.Rdata")
+
 
 #absence probability --------------------
 ## map to study site -------------------
@@ -42,8 +43,6 @@ ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_all_yrs.jpeg"),
        device="jpeg",width=8,height=10,units="in")
 
 ##by elimination area and fy ------------------------------
-elim_thresh <- 0.95
-
 ggplot(pabs_thresh)+
   geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.3)+
   geom_line(aes(x=per_start,y=mn,col=Area_Name),lwd=1.5)+
