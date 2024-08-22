@@ -42,7 +42,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_all_yrs.jpeg"),
        device="jpeg",width=8,height=10,units="in")
 
 ##by elimination area and fy ------------------------------
-elim_thresh <- 0.5
+elim_thresh <- 0.95
 
 ggplot(pabs_thresh)+
   geom_ribbon(aes(x=per_start,ymin=lci,ymax=uci),alpha=0.3)+
@@ -60,7 +60,7 @@ ggplot(pabs_thresh)+
   theme(text=element_text(size=15))+
   guides(color="none")
 
-ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_over50_season_ea.jpeg"),
+ggsave(filename=paste0("./Model Outputs/Plots/Manuscript/pabs_over",elim_thresh,"_season_ea.jpeg"),
        device="jpeg",width=10,height=5,units="in")
 
 ## extent of p(abs) threshold ----------------------
@@ -77,9 +77,9 @@ ggplot(pabs_thresh_ext)+
   geom_ribbon(aes(x=per_start,ymin=lci_prop,ymax=uci_prop),alpha=0.5)+
   geom_line(aes(x=per_start,y=mn_prop),lwd=1)+
   xlab("Season")+
-  ylab("Proportion of study area with p(elimination) > 0.5")
+  ylab("Proportion of study area with p(elimination) > 0.95")
 
-ggsave(filename="./Model outputs/Plots/prop_eliminated_50.jpeg",
+ggsave(filename="./Model outputs/Plots/prop_eliminated_",elim_thresh,".jpeg",
        width=7,height=5,units="in",device="jpeg")
 
 ## elimination threshold extent table ----------------
@@ -227,13 +227,13 @@ g_t <- ggplot(det_trap_sum)+
 # device="jpeg",width=7,height=5,units="in")
 
 ## ground -------------------------
-g_g<- ggplot(det_ground_sum)+
-  geom_ribbon(aes(x=events_km,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=events_km,y=mn))+
-  ylab("Removal rate")+
-  xlab(expression(paste("No. of ground shooting events per k",m^2)))+
-  ggtitle("Ground Shooting")+
-  theme(text=element_text(size=15))
+# g_g<- ggplot(det_ground_sum)+
+#   geom_ribbon(aes(x=events_km,ymin=lci,ymax=uci),alpha=0.3)+
+#   geom_line(aes(x=events_km,y=mn))+
+#   ylab("Removal rate")+
+#   xlab(expression(paste("No. of ground shooting events per k",m^2)))+
+#   ggtitle("Ground Shooting")+
+#   theme(text=element_text(size=15))
 
 # ggsave(g_g,filename=paste0("./Model Outputs/Plots/Manuscript/rem_det_curve_ground.jpeg"),
 # device="jpeg",width=7,height=5,units="in")
