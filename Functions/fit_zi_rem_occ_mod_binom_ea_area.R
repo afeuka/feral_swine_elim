@@ -165,14 +165,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   remtot <- rem_eff_ea %>% group_by(elim_area_idx,period_idx) %>%
     reframe(removal=sum(tot_rem))
   
-  # nfsp <- matrix(NA,nsites,nperiods)
-  # for(i in 1:nsites){
-  #   for(t in 1:nperiods){
-  #     nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
-  #   }
-  # }
-  # nfsp_sc <- scale(nfsp)
-  # 
+  nfsp <- matrix(NA,nsites,nperiods)
+  for(i in 1:nsites){
+    for(t in 1:nperiods){
+      nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
+    }
+  }
+  nfsp_sc <- scale(nfsp)
+
   ##removal matrix ------------------
   yrem <- matrix(0,nea,nperiods)
   ea_idx <- sort(unique(dat_occ$elim_area_idx))
@@ -182,10 +182,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       if(length(x)>0){
         yrem[j,t] <- x
       }}}
-  mean(dat_occ$trap_nights_km[!is.na(dat_occ$trap_nights_km)])
+
   #one trap per mi2 -------------------------------
   mn_te <- ((1/2.59)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
+  
   if(subset_data){
     samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
     
@@ -253,14 +254,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       }
     }
     
-    for(t in 1:nperiods){
-      beta_season[t] ~ dnorm(beta[1],sd=sd_season)
-    }
-    
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        logit(psi[k,t]) <- beta[1] + beta[2]*develop[k] + 
-          beta[3]*agri[k] #+ sa[k]
+        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + 
+          beta[3]*develop[k] + beta[4]*agri[k] #+ sa[k]
         # logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
         
         #occupancy/detection
@@ -354,7 +351,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ### constants -----------------------------
   const <- list(develop=develop$develop_sc,
                 agri=agri$agri_sc,
-                # nfsp=nfsp_sc,
+                nfsp=nfsp_sc,
                 nbeta=nbeta,
                 nsites=nsites,
                 nperiods=nperiods,
