@@ -112,7 +112,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     arrange(site_idx)
   
   ##covariates -----------------------------
-  nbeta <- 3
+  nbeta <- 4
   
   nlcd_siteid_orig <- nlcd_siteid
   nlcd_siteid$site_idx <- as.numeric(as.factor(nlcd_siteid$SiteID))
@@ -225,7 +225,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_pdet ~ dgamma(10,10)
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
-    sd_psi ~ dgamma(10,10)
     
     p_n1 ~ dbeta(0.1,5)
     r_n1 ~ dgamma(6,1) 
