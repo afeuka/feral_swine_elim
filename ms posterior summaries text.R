@@ -4,6 +4,7 @@
 ### Notes: uses output from fit_zi_rem_mod.R
 
 library(tidyverse)
+library(sf)
 
 setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble")
 
@@ -17,8 +18,8 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_21AUG24_logit_det.Rdata")
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/NFSP/posterior_summaries_21AUG24.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/NFSP/posterior_summaries_26AUG24.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
@@ -92,23 +93,50 @@ pelim_sum[which.min(pelim_sum$mn),]
 pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
 pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
 
+pelim_ea[which.max(pelim_ea$md),]
+pelim_ea[which.min(pelim_ea$md),]
+
 # effort to 95% elim -------------
 #range of sample values
-eff_sum[which.min(eff_sum$mn),]
-eff_sum[which.max(eff_sum$mn),]
+eff_sum <- st_read(paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"))
+eff_sum <- eff_sum %>% st_drop_geometry() %>% 
+  rename(period_idx=perd_dx,
+         site_idx=site_dx,
+         eff_mn=mn,
+         eff_md=md,
+         eff_lci=lci,
+         eff_uci=uci) %>% 
+  select(eff_mn,eff_md,eff_lci,eff_uci,site_idx,period_idx)
+eff_sum <- pabs_sum %>% left_join(eff_sum)
+eff_sum %>% filter(mn>=0.4 & mn<=0.6)
+# eff_sum[which.min(eff_sum$mn),]
+# eff_sum[which.max(eff_sum$mn),]
 
 # abundance -------------------
 # density estimate min/max for EAs 
-N_sum_4 <- N_sum_sf %>% st_drop_geometry() %>% filter(Area_Name==4)
+N_sum_sf<- st_read(paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"))
+N_sum_4 <- N_sum_sf %>% st_drop_geometry() %>% filter(Area_Nm==4)
 N_sum_4[which.min(N_sum_4$mn_dens),]
 N_sum_4[which.max(N_sum_4$mn_dens),]
 
-N_sum_6 <- N_sum_sf %>% st_drop_geometry() %>% filter(Area_Name==6)
+N_sum_6 <- N_sum_sf %>% st_drop_geometry() %>% filter(Area_Nm==6)
 N_sum_6[which.min(N_sum_6$mn_dens),]
 N_sum_6[which.max(N_sum_6$mn_dens),]
 
 ## fy trends ---------------
 N_yr_sum
+N_yr_sum[which.min(N_yr_sum$mn),]
+N_yr_sum[which.max(N_yr_sum$mn),]
+
+# lambda --------------------
+if(!exists("lambda")){
+  lambda <- do.call("rbind",lapply(1:nChains,function(i){
+    samples[[i]][grepl("lambda",colnames(samples[[i]]))]}))
+}
+lambda <- lambda[,c("lambda[5]","lambda[7]")]
+data.frame(mn=colMeans(lambda),
+           lci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.025))),
+           uci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.975))))
 
 # removal probability ----------------
 # standardize effort and compare

@@ -20,7 +20,7 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_21AUG24_logit_det.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
@@ -1050,18 +1050,27 @@ ggsave(g_all,file=paste0("./Model Outputs/Plots/",subfolder,"/rem_det_curve_all.
        device="jpeg",width=13,height=6,units="in")
 
 ##removal comparisons --------------------
-a_mn <- max(dat_aerial$prop_ea_impact)*(1-(1-p_rem[,"Aerial"])^max(dat_aerial$eff_area_hrs[dat_aerial$eff_area_hrs!=0]))
-t_mn <- max(dat_trap$prop_ea_impact)*(1-(1-p_rem[,"Trap"])^max(dat_trap$eff_area_hrs[dat_trap$eff_area_hrs!=0]))
-g_mn <- max(dat_ground$prop_ea_impact)*(1-(1-p_rem[,"Ground"])^max(dat_ground$eff_area_events[dat_ground$eff_area_events!=0]))
+a_mn <- max(dat_aerial$prop_ea_impact)*
+  boot::inv.logit(delta[,"Aerial Intercept"] + delta[,"Aerial Slope"]* 
+                    max(dat_aerial$eff_area_hrs_sc[dat_aerial$eff_area_hrs!=0]))
+max(dat_aerial$eff_area_hrs)
+max(dat_aerial$prop_ea_impact)
 
-rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn,ground=g_mn)
-rem_df <- rem_mn %>% pivot_longer(cols=1:3,names_to="rem_typ",values_to="value") %>% 
+t_mn <- max(dat_trap$prop_ea_impact)*
+  boot::inv.logit(delta[,"Trap Intercept"] + delta[,"Trap Slope"]* 
+                    max(dat_trap$eff_area_hrs_sc[dat_trap$eff_area_hrs!=0]))
+max(dat_trap$eff_area_hrs)
+max(dat_trap$prop_ea_impact)
+
+rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn)
+
+rem_df <- rem_mn %>% pivot_longer(cols=1:2,names_to="rem_typ",values_to="value") %>% 
   group_by(rem_typ) %>% 
   summarise(mn=mean(value),
             lci=quantile(value,0.025),
             uci=quantile(value,0.975))
 rem_df$mn[1]/rem_df$mn[2]
-rem_df$mn[1]/rem_df$mn[3]
+
 range(elim_areas %>% filter(Area_Name!="0") %>% st_area()/1e6)
 
 #population growth rate--------------
@@ -1151,7 +1160,7 @@ save(N_yr_sum,pabs_sum_ea,pabs_sum,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,
-     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_21AUG24.RData"))
+     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_26AUG24.RData"))
 
 
           

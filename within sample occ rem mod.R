@@ -8,7 +8,8 @@ library(tidyverse)
 library(pROC)
 library(nimble)
 
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_21AUG24_logit_det.RData")
+#load samples -----------
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.RData")
 
 ##load data --------------------------------
 # load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData")
@@ -268,7 +269,9 @@ save(auc_prev_bin,auc_prev_pocc,auc_occ,
      pVal_ll,pVal_occ,pVal_rem,
      pVal_occ_mse,pVal_rem_mse,
      pVal_rem_mn,pVal_occ_mn,pVal_rem_var,pVal_occ_var,
-     file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_21AUG24.Rdata"))
+     file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_26AUG24.Rdata"))
+
+load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_26AUG24.Rdata"))
 
 #posterior predictive checks ---------------------
 samp_rem <- dat_aerial %>% 
