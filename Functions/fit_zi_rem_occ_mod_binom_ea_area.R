@@ -182,12 +182,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       if(length(x)>0){
         yrem[j,t] <- x
       }}}
-  
+  mean(dat_occ$trap_nights_km[!is.na(dat_occ$trap_nights_km)])
   #one trap per mi2 -------------------------------
-  mn_te <- (1/2.59) /
-    attr(dat_occ$trap_nights_km_sc,"scaled:scale") -
-    attr(dat_occ$trap_nights_km_sc,"scaled:center")
-  
+  mn_te <- ((1/2.59)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
+    attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
   if(subset_data){
     samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
     
