@@ -20,7 +20,7 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
@@ -37,6 +37,15 @@ dat_rem_sum <- dat_rem %>%
             tot_hrs=sum(tot_hrs),
             tot_events=sum(num_events)) %>% 
   filter(month<=max(dat_occ$per_start))
+
+dat_rem_sum_all <- rem_eff_ea %>% 
+  group_by(Area_Name,method,month=floor_date(Date,"month")) %>% 
+  summarise(Season=min(Date),
+            removal=sum(tot_rem),
+            tot_hrs=sum(tot_hrs),
+            tot_events=sum(num_events)) %>% 
+  filter(month<=max(dat_occ$per_start)) %>% 
+  filter(method!="Ground")
 
 nmcmc <- nrow(samples[[1]])
 nChains <- length(samples)
@@ -1105,8 +1114,9 @@ data.frame(mn=colMeans(lambda[,1:2]),
 #   xlab("Season")+ylab("No. feral swine removed")+
 #   theme(text=element_text(size=15))
 dat_rem_sum$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum$Area_Name)
+dat_rem_sum_all$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum_all$Area_Name)
 
-dat_rem_sum %>% 
+dat_rem_sum_all %>% 
   filter(Area_Name!="0") %>% 
   ggplot()+geom_bar(aes(y=removal,x=month,fill=method),
                     stat="identity")+
@@ -1114,11 +1124,11 @@ dat_rem_sum %>%
   scale_fill_discrete(name="Removal method")+
   xlab("Season")+ylab("No. feral swine removed")+
   theme(text=element_text(size=15))
-ggsave(filename = "./Model outputs/Plots/",subfolder,"/Raw Data/raw_removal_ea.jpeg",
+ggsave(filename = "./Model outputs/Plots/Raw Data/raw_removal_ea.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
 #effort ---------------------
-dat_rem_sum %>% 
+dat_rem_sum_all %>% 
   filter(Area_Name!="0") %>% 
   ggplot()+geom_bar(aes(y=tot_hrs,x=month,fill=method),
                     stat="identity")+
@@ -1130,7 +1140,7 @@ ggsave(filename = "./Model outputs/Plots/Raw Data/raw_effort_hours.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
 #raw cpue -------------------
-dat_rem_sum %>% 
+dat_rem_sum_all %>% 
   filter(Area_Name!="0") %>% 
   ggplot()+geom_bar(aes(y=removal/tot_hrs,x=month,fill=method),
                     stat="identity",position="dodge")+
@@ -1166,7 +1176,7 @@ save(eff_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
-     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_26AUG24.RData"))
+     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_27AUG24.RData"))
 
 
           
