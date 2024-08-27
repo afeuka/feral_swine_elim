@@ -187,13 +187,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
   
-  dat_occ %>% left_join(elim_areas) %>% 
-    filter(Area_Name%in%c(4,6)) %>% 
-    group_by(Area_Name) %>% 
-    summarise(mean(trap_nights_km),
-              median(trap_nights_km),
-              max(trap_nights_km))
-  
   if(subset_data){
     samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
     
