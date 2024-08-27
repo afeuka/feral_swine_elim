@@ -251,6 +251,7 @@ pabs_sum <- pabs_sum %>%
 pabs_ea_sum <- pabs_sum %>% 
   group_by(Area_Name,per_start) %>% 
   summarise(ea_md=median(mn))
+
 pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
 pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
 
@@ -516,7 +517,7 @@ ggplot(det_sum)+
   geom_ribbon(aes(x=traps_km,ymin=lci,ymax=uci),alpha=0.3)+
   geom_line(aes(x=traps_km,y=mn))+
   ylab("Detection probability")+
-  xlab(expression(paste("Bait stations per k",m^2)))+
+  xlab(expression(paste("Bait station nights per k",m^2)))+
   theme(text=element_text(size=15))
 
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/occ_det_eff_curve.jpeg"),
@@ -661,43 +662,51 @@ pelim_ea <- pelim_sum_sf %>% st_drop_geometry() %>%
 #   ylab("Median p(elim)")+xlab("Season")+
 #   scale_color_discrete(name="Elimination Area")
 
-#number of samples maps --------------------
-eff_elim <- do.call("rbind",lapply(1:nChains,function(i){samples[[i]][grep("eff_elim",colnames(samples[[i]]))]}))
+#number of samples to elimination --------------------
+syseff <- data.frame(trap_nights=c((0.25/2.59)*45,
+                                   (0.5/2.59)*45,
+                                   (1/2.59)*45))
+syseff$trap_nights_sc <- (syseff$trap_nights-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
+  attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
 
-eff_sum <- data.frame(idx=colnames(eff_elim),
-           mn=colMeans(eff_elim,na.rm=T),
-           md=sapply(1:ncol(eff_elim),function(i)quantile(eff_elim[,i],prob=0.5,na.rm=T)),
-           lci=sapply(1:ncol(eff_elim),function(i)quantile(eff_elim[,i],prob=0.025,na.rm=T)),
-           uci=sapply(1:ncol(eff_elim),function(i)quantile(eff_elim[,i],prob=0.975,na.rm=T)))
+sd_pdet <-  do.call("rbind",lapply(1:nChains,function(i){samples[[i]][grep("sd_pdet",colnames(samples[[i]]))]}))
 
-eff_sum$site_idx <- sapply(1:nrow(eff_sum),function(x){
-  as.numeric(gsub("\\[","",gsub("eff_elim","",unlist(str_split((eff_sum[x,"idx"]),","))[1])))})
+pabs_ex <- c(0.25,0.5,0.75)
+elim_prob <- 0.95
+eff_elim <- array(NA,dim=c(nmcmc*nChains,length(pabs_ex),nrow(syseff)))
+eff_elim_sum <- list()
+for(k in 1:nrow(syseff)){
+  for(j in 1:length(pabs_ex)){
+    for(i in 1:(nmcmc*nChains)){
+      p_sys <- boot::inv.logit(rnorm(1,alpha[i,1] + alpha[i,2]*syseff$trap_nights_sc[k],sd_pdet[i,1]))
+      eff_elim[i,j,k] <- log((pabs_ex[j]*(1-elim_prob))/(elim_prob*(1-pabs_ex[j])))/(log(1-p_sys)) 
+    }
+  }
+  eff_elim_sum[[k]] <- data.frame(pabs=pabs_ex,
+                             mn=colMeans(eff_elim[,,k]),
+                             md=apply(eff_elim[,,k],2,median),
+                             lci=sapply(1:ncol(eff_elim[,,k]),function(x)quantile(eff_elim[,x,k],0.025)),
+                             uci=sapply(1:ncol(eff_elim[,,k]),function(x)quantile(eff_elim[,x,k],0.975)))
+  eff_elim_sum[[k]]$syseff <- syseff$trap_nights[k]
+}
+eff_elim_sum <- do.call("rbind.data.frame",eff_elim_sum)
+eff_elim_sum$syseff_lab<- c(rep("Low",length(pabs_ex)),
+                            rep("Medium",length(pabs_ex)),
+                            rep("High",length(pabs_ex)))
+eff_elim_sum$syseff_lab <- factor(eff_elim_sum$syseff_lab,levels=c("Low","Medium","High"))
 
-eff_sum$period_idx <- sapply(1:nrow(eff_sum),function(x){
-  as.numeric(gsub("\\]","",unlist(str_split((eff_sum[x,"idx"]),","))[2]))})
+ggplot(eff_elim_sum)+
+  geom_bar(aes(y=mn,x=factor(pabs),fill=factor(pabs)),
+           stat="identity",position="dodge")+
+  geom_errorbar(aes(ymin=lci,ymax=uci,x=factor(pabs),width=0))+
+  facet_wrap(.~syseff_lab)+
+  xlab("Watershed probability of feral swine absence")+
+  ylab("Number of weeks to determine 95% elimination probability")+
+  guides(fill="none")+
+  geom_hline(yintercept=max(dat_occ$nweeks),lty=2)
   
-eff_sum_sf <- eff_sum %>% 
-  left_join(study_site_grid %>% rename(site_idx=SiteID)) %>% 
-  st_as_sf() 
-
-i<-nperiods
-ggplot()+
-  geom_sf(data=eff_sum_sf %>% filter(period_idx==i),
-                 aes(fill=mn))+
-  geom_sf(data=elim_areas %>% filter(Area_Name!="0"),aes(col=Area_Name),
-          fill="transparent",lwd=1.5)+
-  scale_fill_viridis_c(name="No. of negative \nbait nights required to \ndetermine 95% \nprobability of elimination",
-                       option="B")+
-  scale_color_discrete(name="Elimination Area")+
-  theme_void()+
-  theme(plot.margin = margin(1,1,1,1, "cm"),
-        text=element_text(size=15))
-
-ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/no_samp_ws_summer2023.jpeg"),
-       device="jpeg",width=10,height=5,units="in")
-
-eff_sum[which.min(eff_sum$mn),]
-eff_sum[which.max(eff_sum$mn),]
+ggsave(filename = paste0("./Model outputs/Plots/",subfolder,"/nweeks_to_elim_trapeff.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 #abundance  -----------------------------
 N <- do.call("rbind",lapply(1:nChains,function(i){
@@ -779,7 +788,7 @@ ggplot()+
                         name = "No. feral swine removed"
                         # breaks=c(0,1000,2000)
                         ))+
-  scale_fill_discrete(name="Removal method")+
+  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Feral swine abundance")+
   xlab("Season")+
   scale_color_manual(name="Elimination area",
@@ -805,7 +814,7 @@ ggplot()+
                         name = "No. feral swine removed"
                         # breaks=c(0,1000,2000)
     ))+
-  scale_fill_discrete(name="Removal method")+
+  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
   xlab("Season")+
   scale_color_manual(name="Elimination area",
@@ -831,7 +840,7 @@ ggplot()+
                                          name = "No. feral swine removed"
                                          # breaks=c(0,1000,2000)
                                          ))+
-  scale_fill_discrete(name="Removal method")+
+  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Standardized feral swine abundance")+
   xlab("Season")+
   scale_color_manual(name="Elimination area",
@@ -1053,6 +1062,7 @@ ggsave(g_all,file=paste0("./Model Outputs/Plots/",subfolder,"/rem_det_curve_all.
 a_mn <- max(dat_aerial$prop_ea_impact)*
   boot::inv.logit(delta[,"Aerial Intercept"] + delta[,"Aerial Slope"]* 
                     max(dat_aerial$eff_area_hrs_sc[dat_aerial$eff_area_hrs!=0]))
+
 max(dat_aerial$eff_area_hrs)
 max(dat_aerial$prop_ea_impact)
 
@@ -1071,6 +1081,8 @@ rem_df <- rem_mn %>% pivot_longer(cols=1:2,names_to="rem_typ",values_to="value")
             uci=quantile(value,0.975))
 rem_df$mn[1]/rem_df$mn[2]
 
+
+
 range(elim_areas %>% filter(Area_Name!="0") %>% st_area()/1e6)
 
 #population growth rate--------------
@@ -1079,9 +1091,9 @@ if(!exists("lambda")){
   samples[[i]][grepl("lambda",colnames(samples[[i]]))]}))
 }
 
-data.frame(mn=colMeans(lambda[,1:nea]),
-           lci=sapply(1:nea,function(i)quantile(lambda[,i],probs=c(0.025))),
-           uci=sapply(1:nea,function(i)quantile(lambda[,i],probs=c(0.975))))
+data.frame(mn=colMeans(lambda[,1:2]),
+           lci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.025))),
+           uci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.975))))
 
 #pig removals ---------------------
 ##by EA--------------------
@@ -1130,19 +1142,13 @@ dat_rem_sum %>%
 ggsave(filename = "./Model outputs/Plots/Raw Data/raw_cpue.jpeg",
        device="jpeg",height=5,width=7,units="in")
 
+
 # summary stats ------------------
 ##raw data ------------------------
-dat_rem_sum %>% 
+dat_rem %>% 
   group_by(method) %>% 
-  summarise(tot_rem=sum(removal),
-            tot_hrs=sum(tot_hrs),
-            num_events=sum(tot_events))
-
-dat_rem_sum %>% 
-  group_by(Area_Name) %>% 
-  summarise(tot_rem=sum(removal),
-            tot_hrs=sum(tot_hrs),
-            num_events=sum(tot_events))
+  summarise(sum(tot_rem),
+            sum(tot_hrs))
 
 sysbait_det_eff %>% 
   ungroup() %>% 
@@ -1151,15 +1157,15 @@ sysbait_det_eff %>%
 
 # subfolder <- "NFSP"
 #save posterior summaries ---------------------------------
-st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"))
-st_write(N_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"))
-st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"))
-save(N_yr_sum,pabs_sum_ea,pabs_sum,
+st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"),append=F)
+st_write(N_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"),append=F)
+st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"),append=F)
+save(eff_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
      pelim_ea,pelim_ea_fy,pelim_sum,pelim_sum_fy,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
-     dat_occ,dat_rem,dat_rem_sum,elim_thresh,
+     dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
      file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_26AUG24.RData"))
 
 
