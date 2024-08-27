@@ -271,7 +271,7 @@ save(auc_prev_bin,auc_prev_pocc,auc_occ,
      pVal_rem_mn,pVal_occ_mn,pVal_rem_var,pVal_occ_var,
      file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_26AUG24.Rdata"))
 
-load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_26AUG24.Rdata"))
+# load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_26AUG24.Rdata"))
 
 #posterior predictive checks ---------------------
 samp_rem <- dat_aerial %>% 
