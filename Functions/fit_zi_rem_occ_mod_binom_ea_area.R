@@ -183,9 +183,16 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
         yrem[j,t] <- x
       }}}
 
-  #one trap per mi2 -------------------------------
-  mn_te <- ((1/2.59)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
+  #mean trapping effort  -------------------------------
+  mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
+  
+  dat_occ %>% left_join(elim_areas) %>% 
+    filter(Area_Name%in%c(4,6)) %>% 
+    group_by(Area_Name) %>% 
+    summarise(mean(trap_nights_km),
+              median(trap_nights_km),
+              max(trap_nights_km))
   
   if(subset_data){
     samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
@@ -249,7 +256,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       for(t in 2:nperiods){
         mu_nb[elim_idx_rem[i],t] <- lambda[elim_idx_rem[i]] * (N[elim_idx_rem[i],t-1] - yrem_mat[elim_idx_rem[i],t-1])
         N[elim_idx_rem[i],t] ~ dpois(mu_nb[elim_idx_rem[i],t])
-        # N_change[i,t] <- (N[i,t]-N[i,t-1])/N[i,t-1]
       }
     }
     
@@ -263,10 +269,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
         pabs[k,t] <- 1-psi[k,t]
         ea_psi[k,t] <- psi[k,t]*z_ea[ea_site_idx[k],t]
         z_site[k,t] ~ dbern(ea_psi[k,t])
-        
-        #number of trap-nights required for 95% certainty elim 
-        eff_elim[k,t] <- log((pabs[k,t]*(1-elim_prob))/(elim_prob*psi[k,t]))/
-          (log(1-p_sys)) 
         
         #effective detection given effort
         pstar_site[k,t] <- 1-(1-p_sys)^eff_weeks
@@ -414,7 +416,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "pabs",
                 "p_sys",
                 "pelim",
-                "eff_elim",
                 "pocc",
                 "p_n1",
                 "r_n1",
