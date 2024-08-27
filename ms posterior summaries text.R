@@ -90,11 +90,11 @@ pelim_sum[which.max(pelim_sum$mn),]
 pelim_sum[which.min(pelim_sum$mn),]
 
 ## elimination area medians ---------------
-pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
-pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
-
 pelim_ea[which.max(pelim_ea$md),]
 pelim_ea[which.min(pelim_ea$md),]
+
+## spatial extent of elimination -----------
+pabs_thresh_yr
 
 # effort to 95% elim -------------
 #range of sample values
@@ -125,8 +125,6 @@ N_sum_6[which.max(N_sum_6$mn_dens),]
 
 ## fy trends ---------------
 N_yr_sum
-N_yr_sum[which.min(N_yr_sum$mn),]
-N_yr_sum[which.max(N_yr_sum$mn),]
 
 # lambda --------------------
 if(!exists("lambda")){
