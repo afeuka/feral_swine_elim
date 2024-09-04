@@ -485,8 +485,9 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
 
   rem_day_ea <-
     rem_site %>%  
-    group_by(Date=floor_date(Date,"day"),period, Method,Area_Name) %>% 
+    group_by(Date=floor_date(Date,"day"),period,Method,Area_Name) %>% 
     summarise(tot_rem=sum(Total),
+              n_events=n(),
               ea_area_km=unique(ea_area_km))
   
   ##clip removals to systematic baiting -----------------------
@@ -561,12 +562,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   # OR assume helicopter covered entire watershed -------------------
   # eff_day <- eff_day %>% mutate(effect_area_km=site_area_km)
-  
-  ## ground = 5 km2 ------------
-  eff_day$effect_area_km[eff_day$method=="Ground"] <- 5
-  
-  ## trap = 6.7 km2 (McCrae et al 2020)----------------------------
-  eff_day$effect_area_km[eff_day$method=="Trap"] <- 6.7
 
   # remove misisng property areas
   # eff_day <- eff_day %>% filter(!is.na(effect_area_km))
@@ -575,8 +570,8 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   eff_day <- eff_day %>% filter(method!="SysBait")
   
   #multiply by number of events
-  eff_day$effect_area_km[eff_day$method=="Ground"] <- eff_day$num_events[eff_day$method=="Ground"]*eff_day$effect_area_km[eff_day$method=="Ground"]
-  eff_day$effect_area_km[eff_day$method=="Trap"] <- eff_day$num_events[eff_day$method=="Trap"]*eff_day$effect_area_km[eff_day$method=="Trap"]
+  # eff_day$effect_area_km[eff_day$method=="Ground"] <- eff_day$num_events[eff_day$method=="Ground"]*eff_day$effect_area_km[eff_day$method=="Ground"]
+  # eff_day$effect_area_km[eff_day$method=="Trap"] <- eff_day$num_events[eff_day$method=="Trap"]*eff_day$effect_area_km[eff_day$method=="Trap"]
   
   # summarise by elim area-------------------
   eff_day_ea <- eff_day %>% 
@@ -585,12 +580,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
               num_events=sum(num_events),
               effect_area_km=max(effect_area_km),
               ea_area_km=unique(ea_area_km)) 
-    
-  # calculate proportional area of impact on elimination area
-  eff_day_ea$prop_ea_impact <- eff_day_ea$effect_area_km/eff_day_ea$ea_area_km
-
-  eff_day_ea$eff_area_hrs <- eff_day_ea$tot_hrs/eff_day_ea$effect_area_km
-  eff_day_ea$eff_area_events <- eff_day_ea$num_events/eff_day_ea$effect_area_km
 
   rem_day_ea <- rem_day_ea %>% rename(method=Method)
   rem_day_ea$method[rem_day_ea$method=="Ground Shoot"] <- "Ground"
@@ -600,9 +589,23 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
              Date<=max(rem_day_ea$Date)) %>% 
     left_join(rem_day_ea) 
   rem_eff_ea$tot_rem[is.na(rem_eff_ea$tot_rem)] <- 0
+  rem_eff_ea$n_events[is.na(rem_eff_ea$n_events)] <-rem_eff_ea$num_events[is.na(rem_eff_ea$n_events)] 
   
   rem_eff_ea <- rem_eff_ea %>% group_by(period,method,Area_Name) %>% 
     mutate(pass_idx=1:n()) 
+  
+  #effective areas
+  ## ground = 5 km2 ------------
+  rem_eff_ea$effect_area_km[rem_eff_ea$method=="Ground"] <- 5 * rem_eff_ea$n_events[rem_eff_ea$method=="Ground"]
+  
+  ## trap = 6.7 km2 (McCrae et al 2020)----------------------------
+  rem_eff_ea$effect_area_km[rem_eff_ea$method=="Trap"] <- 6.7 * rem_eff_ea$n_events[rem_eff_ea$method=="Trap"]
+  
+  # calculate proportional area of impact on elimination area
+  rem_eff_ea$prop_ea_impact <- rem_eff_ea$effect_area_km/rem_eff_ea$ea_area_km
+  
+  rem_eff_ea$eff_area_hrs <- rem_eff_ea$tot_hrs/rem_eff_ea$effect_area_km
+  rem_eff_ea$eff_area_events <- rem_eff_ea$num_events/rem_eff_ea$effect_area_km
 
    #grid landscape covariates to watershed -----------------------------
   if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",grid_typ,".RData"))){
@@ -685,7 +688,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
 
     save(nlcd_siteid,file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",grid_typ,".RData"))
   }
-  
+
   list(nlcd_siteid=nlcd_siteid,
        sysbait_det_eff=sysbait_det_eff,
        rem_eff_ea=rem_eff_ea)
