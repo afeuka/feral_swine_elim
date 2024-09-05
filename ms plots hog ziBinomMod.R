@@ -20,12 +20,12 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_27AUG24_logit_det.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
 } else {
-  subfolder<-"NFSP"
+  subfolder<-"NFSP2"
 }
 
 ## removal data -----------
@@ -252,17 +252,17 @@ pabs_sum[which.max(pabs_sum$mn),]
 pabs_sum[which.min(pabs_sum$mn),]
 
 #elimination area medians (of)
-pabs_sum <- pabs_sum %>% 
-  left_join(study_site_grid %>% 
-              st_drop_geometry() %>% 
-              rename(site_idx=SiteID) %>% 
-              select(site_idx,Area_Name))
-pabs_ea_sum <- pabs_sum %>% 
-  group_by(Area_Name,per_start) %>% 
-  summarise(ea_md=median(mn))
-
-pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
-pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
+# pabs_sum <- pabs_sum %>% 
+#   left_join(study_site_grid %>% 
+#               st_drop_geometry() %>% 
+#               rename(site_idx=SiteID) %>% 
+#               select(site_idx,Area_Name))
+# pabs_ea_sum <- pabs_sum %>% 
+#   group_by(Area_Name,per_start) %>% 
+#   summarise(ea_md=median(mn))
+# 
+# pabs_ea_sum[which.max(pabs_ea_sum$ea_md),]
+# pabs_ea_sum[which.min(pabs_ea_sum$ea_md),]
 
 ##fiscal year ----------------
 ###inidivdual maps------------------
@@ -485,13 +485,16 @@ ggplot(pabs_sum_ea %>% filter(Area_Name!="Outside EAs"))+
   geom_line(aes(x=per_start,y=mn,col=Area_Name),lwd=1.5)+
   facet_wrap(.~Area_Name)+
   xlab("Season")+
-  scale_y_continuous(name="Median elimination probability")+
+  scale_y_continuous(name="Median probability of feral swine absence")+
   scale_color_discrete(name="Elimination area")+
   theme(text=element_text(size=15))+
   guides(color="none")
 
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pabs_md_season_ea.jpeg"),
        device="jpeg",width=10,height=6,units="in")
+
+pabs_sum_ea[which.min(pabs_sum_ea$mn),]
+pabs_sum_ea[which.max(pabs_sum_ea$mn),]
 
 #calculate by fy all sites
 pabs_sum_fy %>% 
@@ -617,7 +620,7 @@ ggplot()+
   facet_wrap(.~fy,ncol=1)+
   scale_fill_viridis_c(#limits=c(0,1),
     direction=-1,
-    name="Feral swine \nelimination probability \nafter 10 negative \ntrap nights")+
+    name="Feral swine \nelimination probability")+
   scale_color_discrete(name="Elimination Area")+
   theme(panel.background=element_blank(),
         axis.ticks=element_blank(),
@@ -710,7 +713,7 @@ ggplot(eff_elim_sum)+
   geom_errorbar(aes(ymin=lci,ymax=uci,x=factor(pabs),width=0))+
   facet_wrap(.~syseff_lab)+
   xlab("Watershed probability of feral swine absence")+
-  ylab("Number of weeks to determine 95% elimination probability")+
+  ylab("Number of 10-day subperiods to determine 95% elimination probability")+
   guides(fill="none")+
   geom_hline(yintercept=max(dat_occ$nweeks),lty=2)
   
@@ -782,7 +785,7 @@ N_sum_6[which.min(N_sum_6$mn_dens),]
 N_sum_6[which.max(N_sum_6$mn_dens),]
 
 ####raw abundance EA 4 and 6 -------------------------
-axis_trans<- 0.01
+axis_trans<- 0.04
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6) & period_idx!=1),
               aes(x=per_start,ymin=lci,ymax=uci),alpha=0.2)+
@@ -808,7 +811,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_remo
        device="jpeg",width=10,height=6,units="in")
 
 #### density EA 4 and 6 -------------------------
-axis_trans_d<- 200
+axis_trans_d<- 650
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6)),
               aes(x=per_start,ymin=lci_dens,ymax=uci_dens),alpha=0.2)+
@@ -834,7 +837,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_remova
        device="jpeg",width=10,height=6,units="in")
 
 ####standardized abundance EA 4 and 6 -------------------------
-axis_scale <- 1800
+axis_scale <- 2000
 ggplot()+  
   geom_ribbon(data=N_sum_sf %>% filter(Area_Name%in%c(4,6)& period_idx!=1),
               aes(x=per_start,ymin=lci_std,ymax=uci_std),alpha=0.2)+
@@ -1167,16 +1170,16 @@ sysbait_det_eff %>%
 
 # subfolder <- "NFSP"
 #save posterior summaries ---------------------------------
-st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"),append=F)
+# st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"),append=F)
 st_write(N_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"),append=F)
 st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"),append=F)
-save(eff_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
+save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
      pelim_ea,pelim_ea_fy,pelim_sum,pelim_sum_fy,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
-     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_27AUG24.RData"))
+     file=paste0("./Model outputs/Plots/",subfolder,"/posterior_summaries_04SEP24.RData"))
 
 
           
