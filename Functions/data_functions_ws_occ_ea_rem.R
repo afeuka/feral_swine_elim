@@ -5,9 +5,12 @@
 
 #grid systematic baiting by watershed
 grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
+                              start_date="2020-09-01", #start date for data in y-m-d string
+                              end_date="2023-11-13", #end date for data in y-m-d string
                               period) {#"month"or "season"
   require(tidyverse)
   require(sf)
+  require(lubridate)
   
   #section ------------------------------------
   sec <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/MO_Public_Land_Survey_System/MO_Public_Land_Survey_System.shp",quiet=T)
@@ -48,21 +51,29 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
     rename(section = LABEL_)
 
   #filter to study period
-  sys_sf <- sys_sf %>% filter((Trap.Start.Date>=as.Date("2020-09-01",format="%Y-%m-%d") |
-                                is.na(Trap.Start.Date)))
+  start_date <- as.Date(start_date,format="%Y-%m-%d")
+  sys_sf <- sys_sf %>% filter((Trap.Start.Date>=start_date |is.na(Trap.Start.Date)))
   
-  sys_sf <- sys_sf %>% filter((Baiting.Start.Date>=as.Date("2020-09-01",format="%Y-%m-%d") |
-                                 is.na(Baiting.Start.Date)))
+  sys_sf <- sys_sf %>% filter((Baiting.Start.Date>=start_date|is.na(Baiting.Start.Date)))
 
   #set up whole site data frame ---------------------
-  fy_mo <- c(10,1,4,7)
+  if(month(start_date)%in%c(10,11,12)){
+    fy_mo <- c(10,1,4,7)
+  } else if(month(start_date%in%c(1,2,3))){
+    fy_mo <- c(1,4,7,10)
+  }else if(month(start_date%in%c(4,5,6))){
+    fy_mo <- c(4,7,10,1)
+  }else if(month(start_date%in%c(7,8,9))){
+    fy_mo <- c(7,10,1,4)
+  }
+
   max_yr <- max(year(sys_sf$Trap.Start.Date),year(sys_sf$Baiting.Start.Date),year(sys_sf$Date.of.Hot.Bait),na.rm=T)
   det_yr <- 2020:max_yr
   per_start <- as.Date(sapply(1:length(fy_mo),function(i){
       sapply(1:length(det_yr),function(j){
         paste0(det_yr[j],"-",fy_mo[i],"-01")})}))
   per_start <- per_start[order(per_start)]
-  per_start <- per_start[-which(per_start<=as.Date("2020-09-01"))]
+  per_start <- per_start[-which(per_start<=as.Date(start_date))]
   subper <- c(sapply(1:length(per_start),function(i){
       if(i<length(per_start)){
         seq(per_start[i],per_start[i+1],by=10)
@@ -85,11 +96,29 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
                                    "Summer","Summer","Summer",
                                    "Fall","Fall","Fall"))
   seasons$scode <- as.numeric(as.factor(seasons$season))
-  seasons$scode[seasons$season=="Fall"] <- 2
-  seasons$scode[seasons$season=="Winter"] <- 3
-  seasons$scode[seasons$season=="Spring"] <- 4
-  seasons$scode[seasons$season=="Summer"] <- 1 #first time period is in september
-
+  
+  if(month(start_date)%in%c(10,11,12)){
+    seasons$scode[seasons$season=="Fall"] <- 1
+    seasons$scode[seasons$season=="Winter"] <- 2
+    seasons$scode[seasons$season=="Spring"] <- 3
+    seasons$scode[seasons$season=="Summer"] <- 4
+  } else if(month(start_date%in%c(1,2,3))){
+    seasons$scode[seasons$season=="Fall"] <- 4
+    seasons$scode[seasons$season=="Winter"] <- 1
+    seasons$scode[seasons$season=="Spring"] <- 2
+    seasons$scode[seasons$season=="Summer"] <- 3
+  }else if(month(start_date%in%c(4,5,6))){
+    seasons$scode[seasons$season=="Fall"] <- 3
+    seasons$scode[seasons$season=="Winter"] <- 4
+    seasons$scode[seasons$season=="Spring"] <- 1
+    seasons$scode[seasons$season=="Summer"] <- 2
+  }else if(month(start_date%in%c(7,8,9))){
+    seasons$scode[seasons$season=="Fall"] <- 2
+    seasons$scode[seasons$season=="Winter"] <- 3
+    seasons$scode[seasons$season=="Spring"] <- 4
+    seasons$scode[seasons$season=="Summer"] <- 1
+  }
+  
   subper$season <- seasons$scode[month(subper$subper_start)]
   subper$period <- paste(subper$season,subper$year)
   subper$period <- as.numeric(as.factor(subper$period))
@@ -170,9 +199,9 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   sys_df <- sys_df %>% filter(Baiting.Start.Date<Complete.Date) 
   
   #correct complete date for end of study
-  sys_df$Complete.Date[sys_df$Complete.Date>as.Date("11-13-2023",format="%m-%d-%Y") & 
-                         !is.na(sys_df$Complete.Date)] <- 
-    as.Date("11-13-2023",format="%m-%d-%Y")
+  end_date <- as.Date(end_date,format="%m-%d-%Y")
+  sys_df$Complete.Date[sys_df$Complete.Date>end_date & 
+                         !is.na(sys_df$Complete.Date)] <- end_date
 
   #remove days with no start or end date
   sys_df <- subset(sys_df,!(is.na(Baiting.Start.Date) & is.na(Complete.Date)))
@@ -365,10 +394,10 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   #load effort data ------------------------------
   #data with point locations
-  if(grid_typ=="watersheds"){
-    load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2014_2023_clean_locs.RData")
+  if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")){
+    load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")
   } else {
-    eff <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/MIS Pulls/mo_fs_effort_Jan2014_Dec2023_q5.csv")
+    eff <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/MIS Pulls/mo_fs_effort_Sep2020_Sep2024_q6.csv")
     eff <- eff %>% rename(lat =PRPU_N_LAT,lon=PRPU_E_LONG)
     
     eff$lon <- str_trim(eff$lon)
@@ -408,7 +437,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     smws <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
     
     eff_sf <- eff_sf %>% st_transform(st_crs(smws)) %>% st_intersection(smws)
-    save(eff_sf,file = "C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2014_2023_clean_locs.RData")
+    save(eff_sf,file = "C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")
   }
   
   eff <- eff_sf
@@ -422,9 +451,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   eff$method[eff$method %in% c("HELICOPTER")] <- "Aerial"
   # eff$method[eff$method %in% c("MONITORING CAMERA")] <- "Camera"
   eff$method[eff$method %in% c("PREBAIT","BAIT STATION")] <- "SysBait"
-  eff <- eff %>% filter(method %in% c("Trap","Ground","Aerial",
-                                      "Camera",
-                                      "SysBait"))
+  eff <- eff %>% filter(method %in% c("Trap","Ground","Aerial","Camera","SysBait"))
   eff$date <- as.Date(eff$date,format="%d-%b-%y")
   
   eff <- eff %>% filter(UOM_NAME%in%c("MINUTES","HOURS","HOBBS METER"))
