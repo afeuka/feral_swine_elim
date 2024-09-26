@@ -18,8 +18,8 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_26AUG24_logit_det.Rdata")
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/NFSP/posterior_summaries_26AUG24.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/NFSP/posterior_summaries_04SEP24.Rdata")
 
 if(nbeta==3){
   subfolder<-"No NFSP"
@@ -138,17 +138,17 @@ data.frame(mn=colMeans(lambda),
 
 # removal probability ----------------
 # standardize effort and compare
-a_mn <- max(dat_aerial$prop_ea_impact)*(1-(1-p_rem[,"Aerial"])^max(dat_aerial$eff_area_hrs[dat_aerial$eff_area_hrs!=0]))
-t_mn <- max(dat_trap$prop_ea_impact)*(1-(1-p_rem[,"Trap"])^max(dat_trap$eff_area_hrs[dat_trap$eff_area_hrs!=0]))
-
-rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn,ground=g_mn)
-rem_df <- rem_mn %>% pivot_longer(cols=1:3,names_to="rem_typ",
-                                  values_to="value") %>% 
-  group_by(rem_typ) %>% 
-  summarise(mn=mean(value),
-            lci=quantile(value,0.025),
-            uci=quantile(value,0.975))
-rem_df$mn[1]/rem_df$mn[2]
-rem_df$mn[1]/rem_df$mn[3]
-range(elim_areas %>% filter(Area_Name!="0") %>% st_area()/1e6)
+# a_mn <- max(dat_aerial$prop_ea_impact)*(1-(1-p_rem[,"Aerial"])^max(dat_aerial$eff_area_hrs[dat_aerial$eff_area_hrs!=0]))
+# t_mn <- max(dat_trap$prop_ea_impact)*(1-(1-p_rem[,"Trap"])^max(dat_trap$eff_area_hrs[dat_trap$eff_area_hrs!=0]))
+# 
+# rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn,ground=g_mn)
+# rem_df <- rem_mn %>% pivot_longer(cols=1:3,names_to="rem_typ",
+#                                   values_to="value") %>% 
+#   group_by(rem_typ) %>% 
+#   summarise(mn=mean(value),
+#             lci=quantile(value,0.025),
+#             uci=quantile(value,0.975))
+# rem_df$mn[1]/rem_df$mn[2]
+# rem_df$mn[1]/rem_df$mn[3]
+# range(elim_areas %>% filter(Area_Name!="0") %>% st_area()/1e6)
 

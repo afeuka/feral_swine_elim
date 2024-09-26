@@ -245,11 +245,12 @@ pabs_long <- pabs_long %>%
 #   group_by(Area_Name,period_idx) %>% 
 #   summarise(md=median(value))
 
-mean(rowMeans(pabs))
-quantile(rowMeans(pabs),c(0.025,0.975))
+# mean(apply(pabs,1,median))
+median(apply(pabs,1,median))
+quantile(apply(pabs,1,median),c(0.025,0.975))
 
-pabs_sum[which.max(pabs_sum$mn),]
-pabs_sum[which.min(pabs_sum$mn),]
+pabs_sum[which.max(pabs_sum$md),]
+pabs_sum[which.min(pabs_sum$md),]
 
 #elimination area medians (of)
 # pabs_sum <- pabs_sum %>% 
@@ -573,6 +574,8 @@ ggplot(pabs_sum_ea %>% filter(Area_Name!="Outside EAs"))+
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pabs_md_season_ea.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
+pabs_sum_ea %>% filter(grepl("4",Area_Name) | 
+                         grepl("6",Area_Name))
 pabs_sum_ea[which.min(pabs_sum_ea$md),]
 pabs_sum_ea[which.max(pabs_sum_ea$md),]
 pabs_sum_ea %>% filter(Area_Name=="Elimination Area 1")
@@ -884,7 +887,9 @@ round(N_sum_6[which.max(N_sum_6$md_dens),c("md_dens","lci_dens","uci_dens")],2)
 dat_rem_sum <- dat_rem_sum %>% left_join(elim_areas %>% st_drop_geometry())
 dat_rem_sum$tot_rem_km <- dat_rem_sum$removal/dat_rem_sum$area_km
 
-axis_trans<- 0.04
+N_sum %>% ungroup() %>% select(md_N,md_lambda_prop,lci_lambda_prop,uci_lambda_prop)
+
+axis_trans<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
               aes(x=per_start,ymin=lci_N,ymax=uci_N),alpha=0.2)+
@@ -894,15 +899,14 @@ ggplot()+
            aes(x=month,y=removal/axis_trans,fill=method),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_lambda_prop,ymax=uci_lambda_prop),
-              alpha=0.2)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop,group=Area_Name),
+              aes(x=per_start,
+                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans),
+              alpha=0.1)+
+  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=Area_Name),
             col="black",lwd=1,lty=2)+
   facet_wrap(.~Area_Name_label)+
-  scale_y_continuous(#limits=c(0,0.15),
-    sec.axis = sec_axis(transform=~ . * axis_trans,
+  scale_y_continuous(sec.axis = sec_axis(transform=~ . * axis_trans,
                         name = "No. feral swine removed"
-                        # breaks=c(0,1000,2000)
                         ))+
   scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Feral swine abundance")+
@@ -915,7 +919,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_remo
        device="jpeg",width=10,height=6,units="in")
 
 #### density EA 4 and 6 -------------------------
-axis_trans_d<- 0.04
+axis_trans_d<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
               aes(x=per_start,ymin=lci_dens,ymax=uci_dens),alpha=0.2)+
@@ -925,13 +929,16 @@ ggplot()+
            aes(x=month,y=tot_rem_km/axis_trans_d,fill=method),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_lambda_prop_dens,ymax=uci_lambda_prop_dens),
-              alpha=0.2)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop_dens,group=Area_Name),
+              aes(x=per_start,
+                  ymin=lci_lambda_prop_dens/axis_trans_d,
+                  ymax=uci_lambda_prop_dens/axis_trans_d),
+              alpha=0.1)+
+  geom_line(data=N_sum,aes(x=per_start,
+                           y=md_lambda_prop_dens/axis_trans_d,group=Area_Name),
             col="black",lwd=1,lty=2)+
   facet_wrap(.~Area_Name_label)+
   scale_y_continuous(
-    sec.axis = sec_axis(transform=~ . * axis_trans_d,
+    sec.axis = sec_axis(transform=~.*axis_trans_d,
                         name=expression(paste("Feral swine removed (swine/k",m^2,")"))
     ))+
   scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
@@ -945,7 +952,7 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_remova
        device="jpeg",width=10,height=6,units="in")
 
 ####standardized abundance EA 4 and 6 -------------------------
-axis_scale <- 2000
+axis_scale <- 6000
 ggplot()+  
   geom_ribbon(data=N_sum,
               aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std),alpha=0.2)+
@@ -955,15 +962,17 @@ ggplot()+
            aes(x=month,y=removal/axis_scale,fill=method),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_lambda_prop_std,ymax=uci_lambda_prop_std),
+              aes(x=per_start,
+                  ymin=lci_lambda_prop/axis_scale,
+                  ymax=uci_lambda_prop/axis_scale),
               alpha=0.2)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop_std,group=Area_Name),
+  geom_line(data=N_sum,aes(x=per_start,
+                           y=md_lambda_prop/axis_scale,
+                           group=Area_Name),
             col="black",lwd=1,lty=2)+
   facet_wrap(.~Area_Name)+
-  scale_y_continuous(#limits=c(0,0.15),
-                     sec.axis = sec_axis(transform=~.*axis_scale, 
+  scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_scale, 
                                          name = "No. feral swine removed"
-                                         # breaks=c(0,1000,2000)
                                          ))+
   scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Standardized feral swine abundance")+
@@ -1093,13 +1102,33 @@ lam_sum <- data.frame(mn=colMeans(lambda[,1:2]),
            lci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.025))),
            uci=sapply(1:2,function(i)quantile(lambda[,i],probs=c(0.975))))
 
+round(min(N_sum_4$md_lambda_prop),0)
+round(N_sum_4$lci_lambda_prop[which.min(N_sum_4$md_lambda_prop)],0)
+round(N_sum_4$uci_lambda_prop[which.min(N_sum_4$md_lambda_prop)],0)
+round(max(N_sum_4$md_lambda_prop),0)
+round(N_sum_4$lci_lambda_prop[which.max(N_sum_4$md_lambda_prop)],0)
+round(N_sum_4$uci_lambda_prop[which.max(N_sum_4$md_lambda_prop)],0)
 
-N_sum_4$lambda_prop <- N_sum_4$md*(lam_sum$mn[1]-1)
-N_sum_6$lambda_prop <- N_sum_6$md*(lam_sum$mn[2]-1)
-round(range(N_sum_4$lambda_prop),0)
-range(N_sum_4$lambda_prop)/(st_area(elim_areas %>% filter(Area_Name=="4"))/1e6)
-round(range(N_sum_6$lambda_prop),0)
-range(N_sum_6$lambda_prop)/(st_area(elim_areas %>% filter(Area_Name=="6"))/1e6)
+round(min(N_sum_4$md_lambda_prop_dens),2)
+round(N_sum_4$lci_lambda_prop_dens[which.min(N_sum_4$md_lambda_prop_dens)],2)
+round(N_sum_4$uci_lambda_prop_dens[which.min(N_sum_4$md_lambda_prop_dens)],2)
+round(max(N_sum_4$md_lambda_prop_dens),2)
+round(N_sum_4$lci_lambda_prop_dens[which.max(N_sum_4$md_lambda_prop_dens)],2)
+round(N_sum_4$uci_lambda_prop_dens[which.max(N_sum_4$md_lambda_prop_dens)],2)
+
+round(min(N_sum_6$md_lambda_prop),0)
+round(N_sum_6$lci_lambda_prop[which.min(N_sum_6$md_lambda_prop)],0)
+round(N_sum_6$uci_lambda_prop[which.min(N_sum_6$md_lambda_prop)],0)
+round(max(N_sum_6$md_lambda_prop),0)
+round(N_sum_6$lci_lambda_prop[which.max(N_sum_6$md_lambda_prop)],0)
+round(N_sum_6$uci_lambda_prop[which.max(N_sum_6$md_lambda_prop)],0)
+
+round(min(N_sum_6$md_lambda_prop_dens),2)
+round(N_sum_6$lci_lambda_prop_dens[which.min(N_sum_6$md_lambda_prop_dens)],2)
+round(N_sum_6$uci_lambda_prop_dens[which.min(N_sum_6$md_lambda_prop_dens)],2)
+round(max(N_sum_6$md_lambda_prop_dens),2)
+round(N_sum_6$lci_lambda_prop_dens[which.max(N_sum_6$md_lambda_prop_dens)],2)
+round(N_sum_6$uci_lambda_prop_dens[which.max(N_sum_6$md_lambda_prop_dens)],2)
 
 
 #pig removals ---------------------

@@ -25,7 +25,7 @@ if(class(samples)=="list"){
 if(nbeta==3){
   subfolder<-"No NFSP"
 } else {
-  subfolder<-"NFSP"
+  subfolder<-"NFSP2"
 }
 
 #occupancy ----------------------
@@ -273,35 +273,35 @@ save(auc_prev_bin,auc_prev_pocc,auc_occ,
 
 # load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_04SEP24.Rdata"))
 
-#posterior predictive checks ---------------------
-samp_rem <- dat_aerial %>% 
-  group_by(elim_area_idx)%>% 
-  summarise(total=sum(tot_rem)) %>% 
-  filter(total>100)
-rem_idx <- which(dat_aerial$elim_area_idx%in%samp_rem$elim_area_idx & dat_aerial$tot_rem>0)
-ypred_rem_a_samp <- ypred_rem_a[,rem_idx]
-dat_rem_samp <- dat_aerial[rem_idx,]
-
-ypred_rem_sum <- data.frame(date = dat_rem_samp$Date,
-                            site_idx = dat_rem_samp$elim_area_idx,
-                            elim_area_idx = dat_rem_samp$period_idx,
-                            tot_rem = dat_rem_samp$tot_rem,
-                            mn=as.numeric(colMeans(ypred_rem_a_samp)),
-                            md=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.5))),
-                            lci=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.025))),
-                            uci=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.975))))
-
-g<-list()
-for(i in 1:length(unique(ypred_rem_sum$elim_area_idx))){
-  g[[i]] <- ggplot(ypred_rem_sum %>% filter(elim_area_idx==unique(ypred_rem_sum$elim_area_idx)[i]))+
-    geom_errorbar(aes(x=date,ymin=lci,ymax=uci),col="grey")+
-    geom_point(aes(x=date,y=tot_rem,col="black"),alpha=0.5)+
-    geom_point(aes(x=date,y=mn,col="red"),alpha=0.5)+
-    scale_color_manual(values=c("black","red"),name="",labels=c("Observed","Predicted"))+
-    ggtitle(unique(dat_rem_samp$elim_area_idx)[i])
-}
-g[[1]]
-g[[2]]
-g[[3]]
-g[[4]]
-
+# #posterior predictive checks ---------------------
+# samp_rem <- dat_aerial %>% 
+#   group_by(elim_area_idx)%>% 
+#   summarise(total=sum(tot_rem)) %>% 
+#   filter(total>100)
+# rem_idx <- which(dat_aerial$elim_area_idx%in%samp_rem$elim_area_idx & dat_aerial$tot_rem>0)
+# ypred_rem_a_samp <- ypred_rem_a[,rem_idx]
+# dat_rem_samp <- dat_aerial[rem_idx,]
+# 
+# ypred_rem_sum <- data.frame(date = dat_rem_samp$Date,
+#                             site_idx = dat_rem_samp$elim_area_idx,
+#                             elim_area_idx = dat_rem_samp$period_idx,
+#                             tot_rem = dat_rem_samp$tot_rem,
+#                             mn=as.numeric(colMeans(ypred_rem_a_samp)),
+#                             md=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.5))),
+#                             lci=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.025))),
+#                             uci=as.numeric(sapply(1:ncol(ypred_rem_a_samp),function(i)quantile(ypred_rem_a_samp[,i],probs=0.975))))
+# 
+# g<-list()
+# for(i in 1:length(unique(ypred_rem_sum$elim_area_idx))){
+#   g[[i]] <- ggplot(ypred_rem_sum %>% filter(elim_area_idx==unique(ypred_rem_sum$elim_area_idx)[i]))+
+#     geom_errorbar(aes(x=date,ymin=lci,ymax=uci),col="grey")+
+#     geom_point(aes(x=date,y=tot_rem,col="black"),alpha=0.5)+
+#     geom_point(aes(x=date,y=mn,col="red"),alpha=0.5)+
+#     scale_color_manual(values=c("black","red"),name="",labels=c("Observed","Predicted"))+
+#     ggtitle(unique(dat_rem_samp$elim_area_idx)[i])
+# }
+# g[[1]]
+# g[[2]]
+# g[[3]]
+# g[[4]]
+# 
