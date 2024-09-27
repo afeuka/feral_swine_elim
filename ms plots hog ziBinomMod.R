@@ -841,16 +841,27 @@ N_long$lambda_prop_dens <- N_long$lambda_prop/N_long$area_km
 N_long$lambda_prop[is.na(N_long$lambda_prop)] <- 0
 N_long$lambda_prop_dens[is.na(N_long$lambda_prop_dens)] <- 0
 
-#density 
-N_long <- N_long %>% mutate(dens=N/area_km)
-
 #standardizes abundance 
 N_ss <- sqrt(sum(N_long$N^2)/(length(N_long$N)-1))
 N_long$N_std <- N_long$N/N_ss
 N_long$lambda_prop_std <- N_long$lambda_prop/N_ss
 
+#projecting pop growth sans removal 
+N_long$N_no_rem <- NA
+N_long$N_no_rem[N_long$period_idx==1] <- N_long$N[N_long$period_idx==1] 
+for(i in 2:nperiods){
+  N_long$N_no_rem[N_long$period_idx==i] <-
+    rpois(length(N_long$N_no_rem[N_long$period_idx==i]),
+          N_long$N_no_rem[N_long$period_idx==(i-1)]*N_long$lambda[N_long$period_idx==(i-1)])
+}
+
+#density 
+N_long <- N_long %>% mutate(dens=N/area_km,
+                            dens_no_rem=N_no_rem/area_km,
+                            N_ss_no_rem=N_no_rem/N_ss)
+
 N_sum <- N_long %>% 
-  pivot_longer(cols=c("N","N_std","dens",
+  pivot_longer(cols=c("N","N_std","dens","N_no_rem","dens_no_rem","N_ss_no_rem",
                       "lambda_prop","lambda_prop_std","lambda_prop_dens"),
                names_to="metric",values_to="value") %>% 
   group_by(metric,Area_Name,period_idx,per_start,year,fy) %>% 
@@ -892,28 +903,45 @@ N_sum %>% ungroup() %>% select(md_N,md_lambda_prop,lci_lambda_prop,uci_lambda_pr
 axis_trans<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_N,ymax=uci_N),alpha=0.2)+
+              aes(x=per_start,ymin=lci_N,ymax=uci_N,fill="Estimated Abundance"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_N,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_N,col="Estimated Abundance"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=removal/axis_trans,fill=method),stat="identity",
+           aes(x=month,y=removal/axis_trans),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
-                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans),
+                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans,
+                  fill="Removal Needed"),
               alpha=0.1)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=Area_Name),
-            col="black",lwd=1,lty=2)+
+  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=Area_Name,
+                           col="Removal Needed"),
+            lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_N_no_rem,ymax=uci_N_no_rem,
+                  fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_N_no_rem,col="No Removal"),
+            lwd=1,lty=3)+
   facet_wrap(.~Area_Name_label)+
   scale_y_continuous(sec.axis = sec_axis(transform=~ . * axis_trans,
                         name = "No. feral swine removed"
                         ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_fill_manual(name="",
+                    values=c("Estimated Abundance"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                     values=c("Estimated Abundance"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Feral swine abundance")+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
@@ -922,31 +950,47 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_remo
 axis_trans_d<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_dens,ymax=uci_dens),alpha=0.2)+
+              aes(x=per_start,ymin=lci_dens,ymax=uci_dens,
+                  fill="Estimated Density"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_dens,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_dens,col="Estimated Density"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=tot_rem_km/axis_trans_d,fill=method),stat="identity",
+           aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
                   ymin=lci_lambda_prop_dens/axis_trans_d,
-                  ymax=uci_lambda_prop_dens/axis_trans_d),
+                  ymax=uci_lambda_prop_dens/axis_trans_d,
+                  fill="Removal Needed"),
               alpha=0.1)+
   geom_line(data=N_sum,aes(x=per_start,
-                           y=md_lambda_prop_dens/axis_trans_d,group=Area_Name),
-            col="black",lwd=1,lty=2)+
+                           y=md_lambda_prop_dens/axis_trans_d,group=Area_Name,
+                           col="Removal Needed"),lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_dens_no_rem,ymax=uci_dens_no_rem,fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_dens_no_rem,col="No Removal"),lwd=1,lty=3)+
   facet_wrap(.~Area_Name_label)+
   scale_y_continuous(
     sec.axis = sec_axis(transform=~.*axis_trans_d,
                         name=expression(paste("Feral swine removed (swine/k",m^2,")"))
     ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_fill_manual(name="",
+                     values=c("Estimated Density"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                    values=c("Estimated Density"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",
+  #                   values=c("lightskyblue","mediumblue"))+
   ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
@@ -955,31 +999,47 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_remova
 axis_scale <- 6000
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std),alpha=0.2)+
+              aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std,
+                  fill="Estimated \nStandardized Abundance"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_N_std,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_N_std,col="Estimated \nStandardized Abundance"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=removal/axis_scale,fill=method),stat="identity",
+           aes(x=month,y=removal/axis_scale),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
                   ymin=lci_lambda_prop/axis_scale,
-                  ymax=uci_lambda_prop/axis_scale),
+                  ymax=uci_lambda_prop/axis_scale,
+                  fill="Removal Needed"),
               alpha=0.2)+
   geom_line(data=N_sum,aes(x=per_start,
                            y=md_lambda_prop/axis_scale,
-                           group=Area_Name),
-            col="black",lwd=1,lty=2)+
+                           group=Area_Name,col="Removal Needed"),
+            lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_N_ss_no_rem,ymax=uci_N_ss_no_rem,
+                  fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_N_ss_no_rem,col="No Removal"),lty=3,lwd=1)+
   facet_wrap(.~Area_Name)+
   scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_scale, 
                                          name = "No. feral swine removed"
                                          ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_fill_manual(name="",
+                    values=c("Estimated \nStandardized Abundance"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                     values=c("Estimated \nStandardized Abundance"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Standardized feral swine abundance")+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/std_abundance_trend_removal.jpeg"),
