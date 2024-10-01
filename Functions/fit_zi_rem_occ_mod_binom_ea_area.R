@@ -15,7 +15,7 @@
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
                            rem_eff_ea, #output of data_functions_ws_occ_ea_rem.R
                            study_site_grid, #output from mapping huc10 to eas.R
-                           elim_prob=0.95,#threshold for probability of elimination
+                           # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
                            monitors, #parameters to save mcmc samples for
                            niter, #number of mcmc iterations
@@ -356,7 +356,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 elim_idx_rem=ea_rem_idx$elim_idx_orig,
                 nea=nea,
                 nea_rem=nea_rem,
-                elim_prob=elim_prob,
+                # elim_prob=elim_prob,
                 mn_te=mn_te,
                 eff_weeks=eff_weeks,
                 site_idx_t=dat_trap$elim_area_idx,
