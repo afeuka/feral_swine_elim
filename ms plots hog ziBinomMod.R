@@ -167,7 +167,6 @@ ggsave(g_alpha,
        filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/detection_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
 
-
 ##lambda -----------------
 lambda <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
   cbind.data.frame(samples[[i]][,grep("lambda",colnames(samples[[i]]))],
@@ -806,18 +805,24 @@ ggsave(filename = paste0("./Model outputs/Plots/",subfolder,"/nweeks_to_elim_tra
 
 #abundance  -----------------------------
 elim_areas$area_km <- as.numeric(st_area(elim_areas)/1e6)
+N <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][grepl("N",colnames(samples[[i]])) & 
+                                  !grepl("N_latent",colnames(samples[[i]]))],
+                   chain=i)})),
+  samp=rep(1:nmcmc,nChains))
 
-N <- do.call("rbind",lapply(1:nChains,function(i){
-  samples[[i]][grepl("N",colnames(samples[[i]])) & !grepl("N_latent",colnames(samples[[i]]))]}))
+# N <- do.call("rbind",lapply(1:nChains,function(i){
+#   samples[[i]][grepl("N",colnames(samples[[i]])) & !grepl("N_latent",colnames(samples[[i]]))]}))
 
-N <- N[,grepl("\\[5,",colnames(N)) | grepl("\\[7,",colnames(N))]
-
-N_long <- N %>% pivot_longer(cols=all_of(1:ncol(N)),
+N <- N[,grepl("\\[5,",colnames(N)) | grepl("\\[7,",colnames(N)) |
+         grepl("samp",colnames(N)) | grepl("chain",colnames(N))]
+colnames(N)
+N_long <- N %>% pivot_longer(cols=1:(ncol(N)-2),
                              values_to = "N",
-                             names_to="idx")
+                             names_to="idx") %>% 
+  select(-idx)
 N_long$elim_area_idx <- rep(rep(c(5,7),nperiods),nmcmc*nChains)
 N_long$period_idx <- rep(sort(rep(1:nperiods,2)),nmcmc*nChains)
-N_long$samp_idx <- sort(rep(1:(nmcmc*nChains),2*nperiods))
 N_long <- N_long %>%
   left_join(elim_areas %>% st_drop_geometry())
 
@@ -827,9 +832,8 @@ per_idx$fy <- per_idx$year
 per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] <- per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] +1
 
 N_long <- N_long %>% left_join(per_idx)
-lambda$samp_idx <- 1:(nmcmc*nChains)
 lambda_N <- lambda
-colnames(lambda_N) <- c("4","6","samp_idx")
+colnames(lambda_N) <- c("4","6","chain","samp")
 lambda_N <- lambda_N %>% pivot_longer(cols=c("4","6"),
                                       names_to="Area_Name",
                                       values_to="lambda")
@@ -897,8 +901,6 @@ round(N_sum_6[which.max(N_sum_6$md_dens),c("md_dens","lci_dens","uci_dens")],2)
 ####raw abundance EA 4 and 6 -------------------------
 dat_rem_sum <- dat_rem_sum %>% left_join(elim_areas %>% st_drop_geometry())
 dat_rem_sum$tot_rem_km <- dat_rem_sum$removal/dat_rem_sum$area_km
-
-N_sum %>% ungroup() %>% select(md_N,md_lambda_prop,lci_lambda_prop,uci_lambda_prop)
 
 axis_trans<- 0.1
 ggplot()+  
@@ -1050,16 +1052,17 @@ N_yr <- N_long %>% filter(month(per_start)==10 | (month(per_start)==7 & year==20
 N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
 
 N_yr <- N_yr %>% filter(elim_area_idx%in%c(5,7))
-N_yr$value_prev<- NA
+N_yr$N_prev<- NA
 for(i in 1:nrow(N_yr)){
   if(N_yr$per_temp[i]>1){
-    N_yr$value_prev[i] <- N_yr$value[N_yr$per_temp==(N_yr$per_temp[i]-1) &
+    N_yr$N_prev[i] <- N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
                                        N_yr$elim_area_idx==N_yr$elim_area_idx[i] &
-                                       N_yr$samp_idx==N_yr$samp_idx[i]]
+                                       N_yr$samp==N_yr$samp[i] &
+                                       N_yr$chain==N_yr$chain[i]]
   }
 }
 
-N_yr$per_change <- (N_yr$value-N_yr$value_prev)/N_yr$value_prev
+N_yr$per_change <- (N_yr$N-N_yr$N_prev)/N_yr$N_prev
 
 N_yr_sum <- N_yr %>% 
   filter(year>2020) %>% 
@@ -1069,7 +1072,7 @@ N_yr_sum <- N_yr %>%
             lci=quantile(per_change,0.025,na.rm=T),
             uci=quantile(per_change,0.975,na.rm=T)) 
 
-write.csv(N_yr_sum,paste0("./Model outputs/Plots/",subfolder,"/N_change_table.csv"))
+write.csv(N_yr_sum,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/N_change_table.csv"))
 
 
 # removal probability -----------------
