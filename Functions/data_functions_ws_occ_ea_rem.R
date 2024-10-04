@@ -6,7 +6,7 @@
 #grid systematic baiting by watershed
 grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
                               start_date="2020-09-01", #start date for data in y-m-d string
-                              end_date="2023-11-13", #end date for data in y-m-d string
+                              end_date="2024-09-30", #end date for data in y-m-d string
                               period) {#"month"or "season"
   require(tidyverse)
   require(sf)
@@ -25,11 +25,26 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   sys2 <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_Jul2023_Nov2023.csv")
   sys2 <- sys2 %>% select(-c(GlobalID..))
   sys <- full_join(sys,sys2 %>% mutate(Lat=as.character(Lat),Long=as.character(Long))) 
-  
-  ##remove NA geometries -------------------------------
-  sys$Lat <- as.numeric(sys$Lat)
-  sys$Long <- as.numeric(sys$Long)
-  sys <- subset(sys, !is.na(Lat))
+  sys <- sys %>% select(Site.Status, Baiting.Start.Date, Date.of.Hot.Bait, Site.Visit.Date, Site.Visit.Reason, Trap.Start.Date,
+                 Complete.Date, Lat, Long, CreationDate, Creator, Sounder.Size)
+  sys3 <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_July23_Sept24.csv")
+  sys3 <- sys3 %>% rename(Site.Status=SiteStatus,
+                  Baiting.Start.Date=BaitingStartDate,
+                  Date.of.Hot.Bait=DateHotBait,
+                  Site.Visit.Date=SiteVisitDate,
+                  Site.Visit.Reason=SiteVisitReas,
+                  Trap.Start.Date=TrapStartDate,
+                  Complete.Date=CompleteDate,
+                  Responsible.Trapper=ResposTrapper,
+                  CreationDate=CreationDate,
+                  Lat=lat,
+                  Long=long,
+                  Sounder.Size=SounderSize) %>% 
+    mutate(Lat=as.character(Lat),
+           Long=as.character(Long),
+           Sounder.Size=as.character(Sounder.Size)) %>% 
+    select(Site.Status, Baiting.Start.Date, Date.of.Hot.Bait, Site.Visit.Date, Site.Visit.Reason, Trap.Start.Date,
+           Complete.Date, Lat, Long, CreationDate, Creator, Sounder.Size)
   
   ##make date objects ---------------------------------
   sys$Baiting.Start.Date <- as.Date(sys$Baiting.Start.Date,format="%m/%d/%Y %H:%M")
@@ -37,38 +52,57 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   sys$Complete.Date <- as.Date(sys$Complete.Date,format="%m/%d/%Y %H:%M")
   sys$Trap.Start.Date <- as.Date(sys$Trap.Start.Date,format="%m/%d/%Y %H:%M")
   sys$Site.Visit.Date <- as.Date(sys$Site.Visit.Date,format="%m/%d/%Y %H:%M")
+  sys$CreationDate <- as.Date(sys$CreationDate,format="%m/%d/%Y %H:%M:%S")
+  
+  sys3$Baiting.Start.Date <-as.Date(sys3$Baiting.Start.Date,format="%Y-%m-%d %H:%M:%S")
+  sys3$Date.of.Hot.Bait <- as.Date(sys3$Date.of.Hot.Bait,format="%Y-%m-%d %H:%M:%S")
+  sys3$Complete.Date <- as.Date(sys3$Complete.Date,format="%Y-%m-%d %H:%M:%S")
+  sys3$Trap.Start.Date <- as.Date(sys3$Trap.Start.Date,format="%Y-%m-%d %H:%M:%S")
+  sys3$Site.Visit.Date <- as.Date(sys3$Site.Visit.Date,format="%Y-%m-%d %H:%M:%S")
+  sys3$CreationDate <- as.Date(sys3$CreationDate,format="%Y-%m-%d %H:%M:%S")
+  
+  # sys3 %>% filter(Baiting.Start.Date>=as.Date("2023-07-01")) %>% arrange(Baiting.Start.Date)
+  # sys %>% filter(Baiting.Start.Date>=as.Date("2023-07-01")) %>% arrange(Baiting.Start.Date)
+  
+  sys <- full_join(sys,sys3)
+
+  ##remove NA geometries -------------------------------
+  sys$Lat <- as.numeric(sys$Lat)
+  sys$Long <- as.numeric(sys$Long)
+  sys <- subset(sys, !is.na(Lat))
   
   sys$Site.Visit.Reason[sys$Site.Visit.Reason=="<Null>"] <- NA
   sys <- subset(sys,!(Site.Visit.Reason%in%c("Domestic Observed","Misinformation")))
   
   ##use southern mo only ---------------------------------
+  sys <- sys[which(sys$Lat<39),]
+  sys <- sys[!duplicated(sys),]
+  
   sys_sf <- st_as_sf(sys,coords=c("Long","Lat"),crs="epsg:4326")
-  sys_sf <- sys_sf[!(sys_sf$OBJECTID..%in%sys$OBJECTID..[which(sys$Lat>39)]),]
-  sys_sf <- st_transform(sys_sf,st_crs(study_site_grid))
-  sys_sf <- sys_sf %>% st_intersection(sec) 
-  sys_sf <- sys_sf %>% select(Site.Status,Baiting.Start.Date,Date.of.Hot.Bait,
-                              Trap.Start.Date,Complete.Date,LABEL_,SiteID,geometry) %>% 
+  sys_sf <- st_transform(sys_sf,st_crs(study_site_grid)) %>% 
+    st_intersection(sec) %>% 
+    select(Site.Status,Baiting.Start.Date,Date.of.Hot.Bait,
+           Trap.Start.Date,Complete.Date,LABEL_,SiteID,geometry) %>% 
     rename(section = LABEL_)
 
   #filter to study period
   start_date <- as.Date(start_date,format="%Y-%m-%d")
   sys_sf <- sys_sf %>% filter((Trap.Start.Date>=start_date |is.na(Trap.Start.Date)))
-  
   sys_sf <- sys_sf %>% filter((Baiting.Start.Date>=start_date|is.na(Baiting.Start.Date)))
 
   #set up whole site data frame ---------------------
   if(month(start_date)%in%c(10,11,12)){
     fy_mo <- c(10,1,4,7)
-  } else if(month(start_date%in%c(1,2,3))){
+  } else if(month(start_date)%in%c(1,2,3)){
     fy_mo <- c(1,4,7,10)
-  }else if(month(start_date%in%c(4,5,6))){
+  }else if(month(start_date)%in%c(4,5,6)){
     fy_mo <- c(4,7,10,1)
-  }else if(month(start_date%in%c(7,8,9))){
+  }else if(month(start_date)%in%c(7,8,9)){
     fy_mo <- c(7,10,1,4)
   }
 
   max_yr <- max(year(sys_sf$Trap.Start.Date),year(sys_sf$Baiting.Start.Date),year(sys_sf$Date.of.Hot.Bait),na.rm=T)
-  det_yr <- 2020:max_yr
+  det_yr <- year(start_date):max_yr
   per_start <- as.Date(sapply(1:length(fy_mo),function(i){
       sapply(1:length(det_yr),function(j){
         paste0(det_yr[j],"-",fy_mo[i],"-01")})}))
@@ -102,17 +136,17 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
     seasons$scode[seasons$season=="Winter"] <- 2
     seasons$scode[seasons$season=="Spring"] <- 3
     seasons$scode[seasons$season=="Summer"] <- 4
-  } else if(month(start_date%in%c(1,2,3))){
+  } else if(month(start_date)%in%c(1,2,3)){
     seasons$scode[seasons$season=="Fall"] <- 4
     seasons$scode[seasons$season=="Winter"] <- 1
     seasons$scode[seasons$season=="Spring"] <- 2
     seasons$scode[seasons$season=="Summer"] <- 3
-  }else if(month(start_date%in%c(4,5,6))){
+  }else if(month(start_date)%in%c(4,5,6)){
     seasons$scode[seasons$season=="Fall"] <- 3
     seasons$scode[seasons$season=="Winter"] <- 4
     seasons$scode[seasons$season=="Spring"] <- 1
     seasons$scode[seasons$season=="Summer"] <- 2
-  }else if(month(start_date%in%c(7,8,9))){
+  }else if(month(start_date)%in%c(7,8,9)){
     seasons$scode[seasons$season=="Fall"] <- 2
     seasons$scode[seasons$season=="Winter"] <- 3
     seasons$scode[seasons$season=="Spring"] <- 4
@@ -149,7 +183,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
     filter(Baiting.Start.Date<Trap.Start.Date | 
              is.na(Baiting.Start.Date) | 
              is.na(Trap.Start.Date)) 
-  
+
   sys_df <- sys_sf %>% st_drop_geometry()
 
   # hog detections occurring three days prior to trapping
@@ -218,7 +252,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   
   #removal data ----------------------------------
   rem <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Removal/Take/MO_ops_take_cleaned.csv")
-  rem$Date <- as.Date(rem$Date)
+  rem$Date <- as.POSIXct(rem$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
   rem_sf <- st_as_sf(rem,coords=c("Long","Lat"),crs="epsg:4326")
 
   ## grid to study_site ------------------------------------------
@@ -226,7 +260,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   rem_sf_trap <- st_intersection(rem_sf,study_site_grid) %>%
     st_intersection(sec) %>%
     select(Date,Total,Males,Females,Adults,Sub_adults,Method,NonBreed_M,
-           NonBreed_F,Adult_M,Adult_F,CY,SiteID,LABEL_,geometry) %>%
+           NonBreed_F,Adult_M,Adult_F,SiteID,LABEL_,geometry) %>%
     rename(section = LABEL_) %>% filter(Method=="Trap") %>%
     filter(Date>=as.Date("01-01-2014",format="%m-%d-%Y"))
 
@@ -253,7 +287,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
       }
     }
   }
-  sys_df$detection_trap <- as.Date(sys_df$detection_trap, origin="1970-01-01")
+  sys_df$detection_trap <- as.POSIXct(sys_df$detection_trap, tz="CST6CDT", origin="1970-01-01")
 
   sys_df <- sys_df %>% rename(detection_sys=Hog.Detection.Sys) %>%
     pivot_longer(cols=c("detection_sys","detection_trap"),names_to="det_typ",
@@ -277,6 +311,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   subper_eff[,as.character(unique(study_site_grid$SiteID))] <- 0
   # sys_df_trap <- sys_df %>% filter(det_typ=="detection_trap")
   # sys_df_trap <- sys_df_trap[!duplicated(sys_df_trap),]
+
   for(j in 1:length(unique(study_site_grid$SiteID))){
     samp <- sys_df[which(sys_df$SiteID==j),]
     if(nrow(samp)>0){
@@ -305,7 +340,6 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   #change detections with no trap nights to 0
   subper$detection[subper$detection>subper$trap_nights] <- 0
 
-  list(sysbait_det_eff=subper)
 }
 # sysbait_det_eff <- sys$sysbait_det_eff
 
@@ -331,14 +365,14 @@ grid_removals <- function(study_site_grid,
   ## mis data 
   # rem <- read.csv("./take_mo_all_dates.csv")
   
-  rem$Date <- as.Date(rem$Date)
+  rem$Date <- as.POSIXct(rem$Date,tz="CST6CDT",format="%Y-%m-%d %H:%M:%S")
   rem_sf <- st_as_sf(rem,coords=c("Long","Lat"),crs="epsg:4326")
   
   rem_sf <- st_transform(rem_sf, st_crs(study_site_grid))
   rem_site <- st_intersection(rem_sf,study_site_grid) %>% 
     select(Date,SiteID,Total,Males,Females,Adults,Sub_adults,Method,NonBreed_M,
-           NonBreed_F,Adult_M,Adult_F,EA,County) %>% 
-    filter(year(Date)>=2014)
+           NonBreed_F,Adult_M,Adult_F,County) %>% 
+    filter(year(Date)>=2020)
   
   rem_sf <- rem_sf %>% select(Date,Total,Method,geometry) %>% 
     st_intersection(study_site_grid)
@@ -352,7 +386,7 @@ grid_removals <- function(study_site_grid,
   #might have different lat/longs but in same section = same trap
   #removes differences in individual hog counts (m/f, adult/juv), uses totals only
   rem_site <- rem_site[!duplicated(rem_site),]
-  rem_site <- rem_site %>% select(-EA) %>% 
+  rem_site <- rem_site %>%
     st_drop_geometry() %>% 
     left_join(study_site_grid %>% 
                 st_drop_geometry() %>% 
@@ -376,8 +410,8 @@ grid_removals <- function(study_site_grid,
                         Date<=max(period_dates$per_end))
   rem_site$period <- NA
   for(i in 1:nrow(rem_site)){
-    rem_site$period[i] <- period_dates$period[period_dates$per_start<=rem_site$Date[i] &
-                                                 period_dates$per_end>=rem_site$Date[i]]
+    rem_site$period[i] <- period_dates$period[period_dates$per_start<=as.Date(rem_site$Date[i]) &
+                                                 period_dates$per_end>=as.Date(rem_site$Date[i])]
   }
   
   list(rem_site=rem_site)
@@ -492,7 +526,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   ##add proportion of area covered by feral swine distribution ----------------------
   load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/ssg_nfsp_all.RData")
-  
+
   sysbait_det_eff <- sysbait_det_eff %>% 
     left_join(ssg_nfsp %>% select(SiteID,prp_nfs,year) %>% 
                 rename(fy=year) %>% 
@@ -540,14 +574,14 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   #   rename(eff_hrs=flight_time,
   #          prop_ea_impact= prop_ea_flown) %>%
   #   mutate(effect_area_km=intersect_area/1e6)
-  
+
   eff_day <- eff %>% 
     st_drop_geometry() %>% 
     group_by(Date=floor_date(date,"day"),
              WT_AGRPROP_ID,method) %>% 
     summarise(tot_hrs=sum(time_hr),#/length(unique(WT_EMP_ID)),
               num_events=n(),
-              Area_Name=unique(Area_Name),
+              Area_Name=unique(Area_Nm),
               SiteID=unique(SiteID)) %>% 
     left_join(study_site_grid %>% st_drop_geometry() %>% 
                 rename(site_area_km=area_km)
@@ -556,7 +590,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
                           rename(Area_Name=elim_area,
                                  ea_area_km=area_km))
   
-
   period_dates <- sysbait_det_eff %>% group_by(period) %>% 
     summarise(per_start=min(subper_start),
               per_end=max(subper_end))
@@ -572,9 +605,10 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   }
   
   ### join aerial gps data -----------------------------
+  #############update through Sept 2024
   ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean.csv")
   ao$method<-"Aerial"
-  
+
   eff_day <- eff_day %>%
     left_join(ao %>% rename(Date=day,
                             prop_ea_impact=prop_ea_flown) %>% 
