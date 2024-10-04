@@ -25,6 +25,8 @@ if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missour
   
   ## systematic baiting  ---------------------------
   sys <- grid_sysbait_take(study_site_grid = study_site_grid,
+                           start_date="2022-01-01", 
+                           end_date="2023-11-13", 
                            period=period)
   ## removal  ---------------------------
   rem <- grid_removals(study_site_grid = study_site_grid,
@@ -52,13 +54,12 @@ source("./Functions/fit_zi_rem_occ_mod_binom_ea_area.R")
 mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            rem_eff_ea = rem_eff_ea,
                            study_site_grid=study_site_grid,
-                           elim_prob=0.95,
                            eff_weeks =10,
                            monitors = NA,
                            subset_data=F,
-                           niter=10000,
-                           thin=1,
-                           burnProp=0.5,
+                           niter=50000,
+                           thin=5,
+                           burnProp=0.8,
                            nChains=1)
 
 samples<- mcmc.out$samples
@@ -84,7 +85,6 @@ mcmcPar <- function(j){
   samp <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                          rem_eff_ea = rem_eff_ea,
                          study_site_grid=study_site_grid,
-                         elim_prob=0.95,
                          eff_weeks=10,
                          monitors=NA, 
                          subset_data=F,
@@ -122,4 +122,4 @@ mn_te <- parSamples[[1]]$mn_te
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
      dat_trap,dat_aerial,mn_te,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_01OCT24_logit_det.Rdata")
