@@ -122,4 +122,4 @@ mn_te <- parSamples[[1]]$mn_te
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
      dat_trap,dat_aerial,mn_te,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_01OCT24_logit_det.Rdata")
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
