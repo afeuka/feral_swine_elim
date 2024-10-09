@@ -17,8 +17,9 @@ period <- "season"
 study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
 study_site_grid <- study_site_grid %>% rename(elim_area_idx=elm_r_d,
                                               Area_Name=Area_Nm)
-if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData"))){
-  load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData"))
+
+if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_23_buffer.RData"))){
+  load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_23_buffer.RData"))
 } else {
   
   ## systematic baiting  ---------------------------
@@ -39,7 +40,7 @@ if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missour
   rem_eff_ea <- eff$rem_eff_ea
 
   save(nlcd_siteid,sysbait_det_eff,rem_eff_ea,
-       file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_neweff.RData")
+       file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_23_buffer.RData")
 }
 
 #fit model -------------------
@@ -50,10 +51,9 @@ source("./Functions/fit_zi_rem_occ_mod_binom_ea_area.R")
 mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            rem_eff_ea = rem_eff_ea,
                            study_site_grid=study_site_grid,
-                           elim_prob=0.95,
                            eff_weeks =10,
+                           nfsp_reg = T,
                            monitors = NA,
-                           subset_data=F,
                            niter=10000,
                            thin=5,
                            burnProp=0.5,
@@ -82,10 +82,9 @@ mcmcPar <- function(j){
   samp <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                          rem_eff_ea = rem_eff_ea,
                          study_site_grid=study_site_grid,
-                         elim_prob=0.95,
                          eff_weeks=10,
+                         nfsp_reg = T,
                          monitors=NA, 
-                         subset_data=F,
                          niter=niter, 
                          thin=thin,
                          burnProp=burnProp,
@@ -105,19 +104,18 @@ stopCluster(cl)
 samples <- list(parSamples[[1]]$samples,
                 parSamples[[2]]$samples,
                 parSamples[[3]]$samples)
-                # parSamples[[4]]$samples,
-                # parSamples[[5]]$samples)
+
 dat_occ <- parSamples[[1]]$dat_occ
 dat_trap <- parSamples[[1]]$dat_trap
 dat_aerial <- parSamples[[1]]$dat_aerial
-dat_ground <- parSamples[[1]]$dat_ground
 nsites <- parSamples[[1]]$nsites
 nea <- parSamples[[1]]$nea
 nperiods <- parSamples[[1]]$nperiods
 nbeta <- parSamples[[1]]$nbeta
 agri <- parSamples[[1]]$agri
 develop <- parSamples[[1]]$develop
+mn_te <- parSamples[[1]]$mn_te
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
-     dat_trap,dat_ground,dat_aerial,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_08AUG24_validation.Rdata")
+     dat_trap,dat_aerial,mn_te,
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_23_09OCT24_re.Rdata")
