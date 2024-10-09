@@ -25,7 +25,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                            thin=1,#thinning interval
                            burnProp,
                            nChains
-                           # subset_data=F#subset data for testing
 ){
   
   require(nimble)
@@ -49,7 +48,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   rem_eff_ea$elim_area_idx <- as.numeric(rem_eff_ea$Area_Name)+1
 
   
-  rem_eff_ea <- rem_eff_ea %>%  rename(period_idx = period) 
+  rem_eff_ea <- rem_eff_ea %>% rename(period_idx = period) 
   
   ##add 0 data for later periods -aerial -------------
   a_pers <- rem_eff_ea %>% ungroup() %>%  
@@ -171,28 +170,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   #mean trapping effort  -------------------------------
   mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
-  
-  # if(subset_data){
-  #   samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
-  #   
-  #   nsites <- length(samp_idx)
-  # 
-  #   dat_occ <- dat_occ %>% filter(site_idx%in%samp_idx) %>% 
-  #     mutate(site_idx = as.numeric(as.factor(site_idx))) 
-  #   
-  #   rem_eff_ea <- rem_eff_ea %>% filter(site_idx%in%samp_idx)%>% 
-  #     mutate(site_idx = as.numeric(as.factor(site_idx))) 
-  #   
-  #   nfsp_sc <- nfsp_sc[samp_idx,]
-  #   yrem <- yrem[samp_idx,]
-  #   
-  #   develop <- develop[samp_idx,]
-  #   agri <- agri[samp_idx,]
-  # }
-  
-  # hist(rnbinom(10000,size=5,p=0.0001)/as.numeric(min(elim_areas$area_km)))
-  # summary(rbeta(100000,0.1,5))
-  # summary(rgamma(10000,6,1))
   
   # fit model ---------------------------
   ## model specification -------------------------------------------------
