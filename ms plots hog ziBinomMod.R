@@ -20,13 +20,14 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
 
-if(nbeta==3){
-  subfolder<-"No NFSP"
-} else {
-  subfolder<-"NFSP2"
-}
+# if(nbeta==3){
+#   subfolder<-"No NFSP"
+# } else {
+#   subfolder<-"NFSP2"
+# }
+subfolder <- "No NFSP 2024"
 
 ## removal data -----------
 dat_rem <- rbind.data.frame(dat_aerial,dat_trap)
@@ -83,6 +84,10 @@ if(nbeta==3){
 }
 
 colnames(beta)[1:nbeta] <- beta_names
+if(subfolder=="No NFSP 2024"){
+  beta <- beta %>% select(-c(`Feral swine range`))
+  nbeta <- ncol(beta %>% select(-c(chain,samp)))
+}
 
 beta_long <- beta %>% 
   pivot_longer(cols=all_of(1:nbeta),names_to="beta",values_to="value") %>% 
@@ -1266,7 +1271,7 @@ save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
-     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/posterior_summaries_04SEP24.RData"))
+     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/posterior_summaries_07OCT24.RData"))
 
 
           
