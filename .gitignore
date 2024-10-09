@@ -34,3 +34,7 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 feral_swine_elim.Rproj
+data_to_mcmc_script_ws_occ_ea_rem_no21.R
+ms plots hog ziBinomMod no21.R
+ms posterior summaries text.R
+data_to_mcmc_script_ws_occ_ea_rem.R
