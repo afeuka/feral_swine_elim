@@ -26,7 +26,7 @@ if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missour
   ## systematic baiting  ---------------------------
   sys <- grid_sysbait_take(study_site_grid = study_site_grid,
                            start_date="2020-09-01", 
-                           end_date="2023-12-31",
+                           end_date="2023-09-30",
                            period=period)
   ## removal  ---------------------------
   rem <- grid_removals(study_site_grid = study_site_grid,
@@ -57,7 +57,7 @@ mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            eff_weeks =10,
                            nfsp_reg=T,
                            monitors = NA,
-                           niter=50000,
+                           niter=10000,
                            thin=5,
                            burnProp=0.8,
                            nChains=1)
@@ -122,4 +122,4 @@ mn_te <- parSamples[[1]]$mn_te
 
 save(samples,dat_occ,nsites,nea,nperiods,nbeta,agri,develop,
      dat_trap,dat_aerial,mn_te,
-     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_24_09OCT24.Rdata")
+     file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_23_09OCT24.Rdata")
