@@ -11,8 +11,6 @@
 # elim_prob=0.95
 # eff_weeks=10
 # nfsp_reg=T
-# sysbait_det_eff <- sysbait_det_eff %>% filter(year==2023)
-# rem_eff_ea <- rem_eff_ea %>% filter(year(Date)==2023)
 
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
                            rem_eff_ea, #output of data_functions_ws_occ_ea_rem.R
@@ -156,7 +154,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
   }
   nfsp_sc <- scale(nfsp)
-
+  
   ##removal matrix ------------------
   yrem <- matrix(0,nea,nperiods)
   ea_idx <- sort(unique(dat_occ$elim_area_idx))
@@ -419,7 +417,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  # Cmod$mod$N
+  # Cmod$mod$psi
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
