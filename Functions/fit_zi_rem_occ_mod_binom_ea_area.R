@@ -10,19 +10,19 @@
 # thin=1
 # elim_prob=0.95
 # eff_weeks=10
-# subset_data=F
+# nfsp_reg=T
 
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
                            rem_eff_ea, #output of data_functions_ws_occ_ea_rem.R
                            study_site_grid, #output from mapping huc10 to eas.R
-                           elim_prob=0.95,#threshold for probability of elimination
+                           # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
+                           nfsp_reg=TRUE,#use nfsp range in occupancy estimates
                            monitors, #parameters to save mcmc samples for
                            niter, #number of mcmc iterations
                            thin=1,#thinning interval
                            burnProp,
-                           nChains,
-                           subset_data=F#subset data for testing
+                           nChains
 ){
   
   require(nimble)
@@ -30,8 +30,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   require(sf)
   
   # data setup -------------------------------------------------
-  # study_site_grid$elim_area_idx[study_site_grid$Area_Name%in%c("0","1")] <- NA
-  
   elim_areas <- study_site_grid %>% 
     group_by(Area_Name) %>% 
     summarise(geometry=st_union(geometry)) %>% 
@@ -39,36 +37,16 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
            area_km=area_m/1e6,
            elim_area_idx=as.numeric(Area_Name)+1)
   
-  # ssg_adj <- st_intersects(study_site_grid,remove_self=T)
-  # ssg_adj <- as.carAdjacency(ssg_adj)
-  
   sysbait_det_eff$Area_Name[is.na(sysbait_det_eff$Area_Name)] <- 0
-  # sysbait_det_eff <- sysbait_det_eff %>% select(-elim_area_idx)
   
   ## remove area outside of EAs and EA 1 ---------------
   rem_eff_ea$Area_Name[is.na(rem_eff_ea$Area_Name)]<- 0
   
-  rem_eff_ea <- rem_eff_ea %>% filter(Area_Name%in%c("4","6"))#filter(!(Area_Name%in%c("0","1"))) 
+  rem_eff_ea <- rem_eff_ea %>% filter(Area_Name%in%c("4","6")) %>% 
+    filter(effect_area_hrs<10)
+
   rem_eff_ea$elim_area_idx <- as.numeric(rem_eff_ea$Area_Name)+1
-  # rem_eff_ea$elim_area_idx <- as.numeric(as.factor(rem_eff_ea$Area_Name))
-  
-  # sysbait_det_eff <- sysbait_det_eff %>% 
-  #   left_join(rem_eff_ea %>% ungroup() %>% 
-  #               select(elim_area_idx,Area_Name) %>% 
-  #               distinct())
-  
-  # elim_areas <- elim_areas %>% filter(!(Area_Name%in%c("0","1"))) %>% 
-  #   left_join(rem_eff_ea %>% ungroup() %>% 
-  #               select(elim_area_idx,Area_Name) %>% 
-  #               distinct())
-  
-  rem_eff_ea <- rem_eff_ea %>% filter(!is.na(prop_ea_impact)) %>% 
-    filter(!(method=="Ground" & is.na(eff_area_events))) %>% 
-    filter(!(method%in%c("Aerial","Trap") & is.na(eff_area_hrs))) %>% 
-    # filter(!(method=="Aerial" & eff_area_hrs>0.15)) %>% 
-    rename(period_idx = period) %>% 
-    group_by(period_idx,method,Area_Name) %>% 
-    mutate(pass_idx=1:n()) 
+  rem_eff_ea <- rem_eff_ea %>% rename(period_idx = period) 
   
   ##add 0 data for later periods -aerial -------------
   a_pers <- rem_eff_ea %>% ungroup() %>%  
@@ -82,7 +60,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   samp$period_idx <- rep(a_pers_n,length(eids))
   samp$elim_area_idx <- sort(rep(unique(eids),length(a_pers_n)))
   samp$Area_Name <-samp$Date <- NA
-  samp$tot_rem <- samp$tot_hrs <- samp$num_events <- samp$eff_area_events <- samp$eff_area_hrs <-
+  samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
     samp$prop_ea_impact <- samp$effect_area_km <- 0
   samp$pass_idx <- 1
   rem_eff_ea <- rbind(rem_eff_ea,samp)
@@ -112,7 +90,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     arrange(site_idx)
   
   ##covariates -----------------------------
-  nbeta <- 4
+  if(nfsp_reg){
+    nbeta <- 4
+  } else {
+    nbeta <- 3
+  }
   
   nlcd_siteid_orig <- nlcd_siteid
   nlcd_siteid$site_idx <- as.numeric(as.factor(nlcd_siteid$SiteID))
@@ -154,8 +136,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
   }
   
-  dat_aerial$eff_area_hrs_sc <- scale(dat_aerial$eff_area_hrs)
-  dat_trap$eff_area_hrs_sc <- scale(dat_trap$eff_area_hrs)
+  dat_aerial$effect_area_hrs_sc <- scale(dat_aerial$effect_area_hrs)
+  dat_trap$effect_area_hrs_sc <- scale(dat_trap$effect_area_hrs)
   
   nea_rem <- length(unique(rem_eff_ea$elim_area_idx))
   ea_rem_idx <- data.frame(elim_idx_rem=1:nea_rem,
@@ -168,11 +150,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   nfsp <- matrix(NA,nsites,nperiods)
   for(i in 1:nsites){
     for(t in 1:nperiods){
-      nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
+      nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs_lag[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
     }
   }
   nfsp_sc <- scale(nfsp)
-
+  
   ##removal matrix ------------------
   yrem <- matrix(0,nea,nperiods)
   ea_idx <- sort(unique(dat_occ$elim_area_idx))
@@ -187,41 +169,30 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
   
-  if(subset_data){
-    samp_idx <- sample(unique(dat_occ$site_idx),20,replace=F)
-    
-    nsites <- length(samp_idx)
-    
-    dat_occ <- dat_occ %>% filter(site_idx%in%samp_idx) %>% 
-      mutate(site_idx = as.numeric(as.factor(site_idx))) 
-    dat_rem <- dat_rem %>% filter(site_idx%in%samp_idx)%>% 
-      mutate(site_idx = as.numeric(as.factor(site_idx))) 
-    
-    nfsp_sc <- nfsp_sc[samp_idx,]
-    yrem <- yrem[samp_idx,]
-    
-    develop <- develop[samp_idx,]
-    agri <- agri[samp_idx,]
-  }
-  
-  # hist(rnbinom(10000,size=5,p=0.0001)/as.numeric(min(elim_areas$area_km)))
-  # summary(rbeta(100000,0.1,5))
-  # summary(rgamma(10000,6,1))
-  
   # fit model ---------------------------
   ## model specification -------------------------------------------------
-  ZIbinomcode <- nimbleCode({
-    
+  ZIbinomcode <- eval(str2lang(paste("nimbleCode({",
+    "
     for(i in 1:nbeta){
       beta[i] ~ dlogis(0,1)
     }
-    
+    ",
+    if(nfsp_reg==F){
+      "
+      for(t in 1:nperiods){
+        beta0[t] ~ dnorm(beta[1],sd=sd_beta0)
+      }
+      
+      sd_beta0 ~ dgamma(10,10)
+    "},
+
+    "
     for(i in 1:2){
       alpha[i] ~ dlogis(0,1)
       delta_t[i] ~ dlogis(0,1)
       delta_a[i] ~ dlogis(0,1)
     }
-    
+  
     sd_pdet ~ dgamma(10,10)
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
@@ -254,10 +225,19 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     
     for(k in 1:nsites){ #watershed loop
       for(t in 1:nperiods){
-        logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] + 
-          beta[3]*develop[k] + beta[4]*agri[k] #+ sa[k]
-        # logit(psi[k,t]) ~ dnorm(mu_psi[k,t],sd=sd_psi)
-        
+      ",
+    if(nfsp_reg){
+      "
+      logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] +
+        beta[3]*develop[k] + beta[4]*agri[k]
+      "
+    } else {
+      "
+      logit(psi[k,t]) <- beta0[t] + beta[2]*develop[k] + beta[3]*agri[k]
+      "
+    },
+      "
+      
         #occupancy/detection
         pabs[k,t] <- 1-psi[k,t]
         ea_psi[k,t] <- psi[k,t]*z_ea[ea_site_idx[k],t]
@@ -326,16 +306,19 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       pocc[i] <- pdet[i]*z_site[site_idx_occ[i],period_idx_occ[i]]
       yocc[i] ~ dbinom(prob=pocc[i],size=nweeks[i])
       yocc_pred[i] ~ dbinom(prob=pocc[i],size=nweeks[i])
-    }
-    
+    }",
+  "
   })
+    " #nimblecode end
+    )))
+  
   
   ## nimble lists  -------------------------------------------------
   modDat <- list(yrem_trap=dat_trap$tot_rem,
-                 eff_area_t=dat_trap$eff_area_hrs_sc[,1],
+                 eff_area_t=dat_trap$effect_area_hrs_sc[,1],
                  gamma_t=gamma_t,
                  yrem_aerial=dat_aerial$tot_rem,
-                 eff_area_a=dat_aerial$eff_area_hrs_sc[,1],
+                 eff_area_a=dat_aerial$effect_area_hrs_sc[,1],
                  gamma_a=gamma_a,
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
@@ -356,7 +339,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 elim_idx_rem=ea_rem_idx$elim_idx_orig,
                 nea=nea,
                 nea_rem=nea_rem,
-                elim_prob=elim_prob,
+                # elim_prob=elim_prob,
                 mn_te=mn_te,
                 eff_weeks=eff_weeks,
                 site_idx_t=dat_trap$elim_area_idx,
@@ -385,7 +368,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 z_ea = matrix(1,nea,nperiods),
                 psi_ea = rnorm(nea,0.95,0.01)
   )
-  inits$N[,1] <- apply(yrem,1,max)*10
+  inits$N[,1] <- apply(yrem,1,max)*15
   
   ## nimble configuration -------------------------------------------------
   mod <- nimbleModel(code = ZIbinomcode,
@@ -399,15 +382,13 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   # if(is.na(monitors)){
   monitors <- c("lambda",
                 "beta",
+                if(nfsp_reg==F){"beta0"},
                 "alpha",
                 "sd_pdet",
                 "delta_t",
                 "delta_a",
-                "sd_theta_t",
-                "sd_theta_a",
                 "N",
                 "pabs",
-                "p_sys",
                 "pelim",
                 "pocc",
                 "p_n1",
@@ -415,11 +396,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "N_latent",
                 "pip_a",
                 "pip_t",
-                "mu_lam",
-                "sd_lam",
                 "yrem_pred_aerial",
                 "yrem_pred_trap",
-                "yocc_pred")
+                "yocc_pred"
+                )
   # }
   mcmc.conf$setMonitors(monitors)
   
@@ -433,8 +413,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  
-  # Cmod$mod$N
+  # Cmod$mod$psi
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
