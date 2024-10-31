@@ -10,6 +10,7 @@ library(tigris)
 
 setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble")
 
+old_dir <- "C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/Old Area Calculation/NFSP"
 ##study site--------------------
 study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
 study_site_grid <- study_site_grid %>% rename(elim_area_idx=elm_r_d,
@@ -20,12 +21,12 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_04SEP24_logit_det.Rdata")
 
 if(nbeta==3){
-  subfolder<-"No NFSP"
+  subfolder<- paste0("No NFSP ",max(year(sysbait_det_eff$subper_start))," Lag")
 } else {
-  subfolder<-"NFSP2"
+  subfolder<- paste0("NFSP ",max(year(sysbait_det_eff$subper_start))," Lag")
 }
 
 ## removal data -----------
@@ -83,6 +84,10 @@ if(nbeta==3){
 }
 
 colnames(beta)[1:nbeta] <- beta_names
+if(subfolder=="No NFSP 2024"){
+  beta <- beta %>% select(-c(`Feral swine range`))
+  nbeta <- ncol(beta %>% select(-c(chain,samp)))
+}
 
 beta_long <- beta %>% 
   pivot_longer(cols=all_of(1:nbeta),names_to="beta",values_to="value") %>% 
@@ -166,7 +171,6 @@ g_alpha<- gridExtra::grid.arrange(g_a,g_t,g_s)
 ggsave(g_alpha, 
        filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/detection_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
-
 
 ##lambda -----------------
 lambda <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
@@ -431,6 +435,18 @@ ggplot(pabs_thresh_ext)+
   xlab("Season")+
   ylab(expression(paste("K",m^2," with > 0.95 p(elimination)")))+
   theme(text=element_text(size=15))
+
+ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/km2_eliminated_",elim_thresh,".jpeg"),
+       width=7,height=5,units="in",device="jpeg")
+
+ggplot(pabs_thresh_ext)+ 
+  geom_ribbon(aes(x=per_start,ymin=lci/2.59,ymax=uci/2.59),alpha=0.5)+
+  geom_line(aes(x=per_start,y=md/2.59),lwd=1)+
+  xlab("Season")+
+  ylab(expression(paste("M",i^2," with > 0.95 p(elimination)")))+
+  theme(text=element_text(size=15))
+ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/mi2_eliminated_",elim_thresh,".jpeg"),
+       width=7,height=5,units="in",device="jpeg")
 
 ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/km2_eliminated_",elim_thresh,".jpeg"),
        width=7,height=5,units="in",device="jpeg")
@@ -806,18 +822,24 @@ ggsave(filename = paste0("./Model outputs/Plots/",subfolder,"/nweeks_to_elim_tra
 
 #abundance  -----------------------------
 elim_areas$area_km <- as.numeric(st_area(elim_areas)/1e6)
+N <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][grepl("N",colnames(samples[[i]])) & 
+                                  !grepl("N_latent",colnames(samples[[i]]))],
+                   chain=i)})),
+  samp=rep(1:nmcmc,nChains))
 
-N <- do.call("rbind",lapply(1:nChains,function(i){
-  samples[[i]][grepl("N",colnames(samples[[i]])) & !grepl("N_latent",colnames(samples[[i]]))]}))
+# N <- do.call("rbind",lapply(1:nChains,function(i){
+#   samples[[i]][grepl("N",colnames(samples[[i]])) & !grepl("N_latent",colnames(samples[[i]]))]}))
 
-N <- N[,grepl("\\[5,",colnames(N)) | grepl("\\[7,",colnames(N))]
+N <- N[,grepl("\\[5,",colnames(N)) | grepl("\\[7,",colnames(N)) |
+         grepl("samp",colnames(N)) | grepl("chain",colnames(N))]
 
-N_long <- N %>% pivot_longer(cols=all_of(1:ncol(N)),
+N_long <- N %>% pivot_longer(cols=1:(ncol(N)-2),
                              values_to = "N",
-                             names_to="idx")
+                             names_to="idx") %>% 
+  select(-idx)
 N_long$elim_area_idx <- rep(rep(c(5,7),nperiods),nmcmc*nChains)
 N_long$period_idx <- rep(sort(rep(1:nperiods,2)),nmcmc*nChains)
-N_long$samp_idx <- sort(rep(1:(nmcmc*nChains),2*nperiods))
 N_long <- N_long %>%
   left_join(elim_areas %>% st_drop_geometry())
 
@@ -827,9 +849,8 @@ per_idx$fy <- per_idx$year
 per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] <- per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] +1
 
 N_long <- N_long %>% left_join(per_idx)
-lambda$samp_idx <- 1:(nmcmc*nChains)
 lambda_N <- lambda
-colnames(lambda_N) <- c("4","6","samp_idx")
+colnames(lambda_N) <- c("4","6","chain","samp")
 lambda_N <- lambda_N %>% pivot_longer(cols=c("4","6"),
                                       names_to="Area_Name",
                                       values_to="lambda")
@@ -841,16 +862,27 @@ N_long$lambda_prop_dens <- N_long$lambda_prop/N_long$area_km
 N_long$lambda_prop[is.na(N_long$lambda_prop)] <- 0
 N_long$lambda_prop_dens[is.na(N_long$lambda_prop_dens)] <- 0
 
-#density 
-N_long <- N_long %>% mutate(dens=N/area_km)
-
 #standardizes abundance 
 N_ss <- sqrt(sum(N_long$N^2)/(length(N_long$N)-1))
 N_long$N_std <- N_long$N/N_ss
 N_long$lambda_prop_std <- N_long$lambda_prop/N_ss
 
+#projecting pop growth sans removal 
+N_long$N_no_rem <- NA
+N_long$N_no_rem[N_long$period_idx==1] <- N_long$N[N_long$period_idx==1] 
+for(i in 2:nperiods){
+  N_long$N_no_rem[N_long$period_idx==i] <-
+    rpois(length(N_long$N_no_rem[N_long$period_idx==i]),
+          N_long$N_no_rem[N_long$period_idx==(i-1)]*N_long$lambda[N_long$period_idx==(i-1)])
+}
+
+#density 
+N_long <- N_long %>% mutate(dens=N/area_km,
+                            dens_no_rem=N_no_rem/area_km,
+                            N_ss_no_rem=N_no_rem/N_ss)
+
 N_sum <- N_long %>% 
-  pivot_longer(cols=c("N","N_std","dens",
+  pivot_longer(cols=c("N","N_std","dens","N_no_rem","dens_no_rem","N_ss_no_rem",
                       "lambda_prop","lambda_prop_std","lambda_prop_dens"),
                names_to="metric",values_to="value") %>% 
   group_by(metric,Area_Name,period_idx,per_start,year,fy) %>% 
@@ -887,33 +919,46 @@ round(N_sum_6[which.max(N_sum_6$md_dens),c("md_dens","lci_dens","uci_dens")],2)
 dat_rem_sum <- dat_rem_sum %>% left_join(elim_areas %>% st_drop_geometry())
 dat_rem_sum$tot_rem_km <- dat_rem_sum$removal/dat_rem_sum$area_km
 
-N_sum %>% ungroup() %>% select(md_N,md_lambda_prop,lci_lambda_prop,uci_lambda_prop)
-
 axis_trans<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_N,ymax=uci_N),alpha=0.2)+
+              aes(x=per_start,ymin=lci_N,ymax=uci_N,fill="Estimated Abundance"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_N,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_N,col="Estimated Abundance"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=removal/axis_trans,fill=method),stat="identity",
+           aes(x=month,y=removal/axis_trans),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
-                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans),
+                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans,
+                  fill="Removal Needed"),
               alpha=0.1)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=Area_Name),
-            col="black",lwd=1,lty=2)+
+  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=Area_Name,
+                           col="Removal Needed"),
+            lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_N_no_rem,ymax=uci_N_no_rem,
+                  fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_N_no_rem,col="No Removal"),
+            lwd=1,lty=3)+
   facet_wrap(.~Area_Name_label)+
-  scale_y_continuous(sec.axis = sec_axis(transform=~ . * axis_trans,
-                        name = "No. feral swine removed"
-                        ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_y_continuous(sec.axis = sec_axis(trans=~.*axis_trans, name="No. feral swine removed"))+
+  scale_fill_manual(name="",
+                    values=c("Estimated Abundance"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                     values=c("Estimated Abundance"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Feral swine abundance")+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
@@ -922,64 +967,95 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_remo
 axis_trans_d<- 0.1
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_dens,ymax=uci_dens),alpha=0.2)+
+              aes(x=per_start,ymin=lci_dens,ymax=uci_dens,
+                  fill="Estimated Density"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_dens,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_dens,col="Estimated Density"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=tot_rem_km/axis_trans_d,fill=method),stat="identity",
+           aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
                   ymin=lci_lambda_prop_dens/axis_trans_d,
-                  ymax=uci_lambda_prop_dens/axis_trans_d),
+                  ymax=uci_lambda_prop_dens/axis_trans_d,
+                  fill="Removal Needed"),
               alpha=0.1)+
   geom_line(data=N_sum,aes(x=per_start,
-                           y=md_lambda_prop_dens/axis_trans_d,group=Area_Name),
-            col="black",lwd=1,lty=2)+
+                           y=md_lambda_prop_dens/axis_trans_d,group=Area_Name,
+                           col="Removal Needed"),lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_dens_no_rem,ymax=uci_dens_no_rem,fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_dens_no_rem,col="No Removal"),lwd=1,lty=3)+
   facet_wrap(.~Area_Name_label)+
-  scale_y_continuous(
-    sec.axis = sec_axis(transform=~.*axis_trans_d,
-                        name=expression(paste("Feral swine removed (swine/k",m^2,")"))
-    ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_y_continuous(#limits=c(0,7),
+                     sec.axis = sec_axis(trans=~.*axis_trans_d, name="No. feral swine removed per km2"))+
+  scale_fill_manual(name="",
+                     values=c("Estimated Density"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                    values=c("Estimated Density"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",
+  #                   values=c("lightskyblue","mediumblue"))+
   ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
+
+# ggsave(filename=paste0(old_dir,"/density_trend_removal_no_red.jpeg"),
+#        device="jpeg",width=10,height=6,units="in")
 
 ####standardized abundance EA 4 and 6 -------------------------
 axis_scale <- 6000
 ggplot()+  
   geom_ribbon(data=N_sum,
-              aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std),alpha=0.2)+
+              aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std,
+                  fill="Estimated \nStandardized Abundance"),alpha=0.2)+
   geom_line(data=N_sum,
-            aes(x=per_start,y=md_N_std,col=Area_Name),lwd=1)+
+            aes(x=per_start,y=md_N_std,col="Estimated \nStandardized Abundance"),lwd=1)+
   geom_bar(data=dat_rem_sum,
-           aes(x=month,y=removal/axis_scale,fill=method),stat="identity",
+           aes(x=month,y=removal/axis_scale),stat="identity",
            alpha=0.6)+
   geom_ribbon(data=N_sum,
               aes(x=per_start,
                   ymin=lci_lambda_prop/axis_scale,
-                  ymax=uci_lambda_prop/axis_scale),
+                  ymax=uci_lambda_prop/axis_scale,
+                  fill="Removal Needed"),
               alpha=0.2)+
   geom_line(data=N_sum,aes(x=per_start,
                            y=md_lambda_prop/axis_scale,
-                           group=Area_Name),
-            col="black",lwd=1,lty=2)+
+                           group=Area_Name,col="Removal Needed"),
+            lwd=1,lty=2)+
+  geom_ribbon(data=N_sum,
+              aes(x=per_start,ymin=lci_N_ss_no_rem,ymax=uci_N_ss_no_rem,
+                  fill="No Removal"),
+              alpha=0.1)+
+  geom_line(data=N_sum,
+            aes(x=per_start,y=md_N_ss_no_rem,col="No Removal"),lty=3,lwd=1)+
   facet_wrap(.~Area_Name)+
-  scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_scale, 
-                                         name = "No. feral swine removed"
-                                         ))+
-  scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
+  scale_y_continuous(sec.axis = sec_axis(trans=~.*axis_scale, name="No. feral swine removed"))+
+  scale_fill_manual(name="",
+                    values=c("Estimated \nStandardized Abundance"="black",
+                             "No Removal"="red",
+                             "Removal Needed"="blue"))+
+  scale_color_manual(name="",
+                     values=c("Estimated \nStandardized Abundance"="black",
+                              "No Removal"="red",
+                              "Removal Needed"="blue"))+
+  # scale_fill_manual(name="Removal method",values=c("lightskyblue","mediumblue"))+
   ylab("Standardized feral swine abundance")+
   xlab("Season")+
-  scale_color_manual(name="Elimination area",
-                     values=scales::hue_pal()(6)[c(4,6)])+
-  guides(color="none")+
+  # scale_color_manual(name="Elimination area",
+  #                    values=scales::hue_pal()(6)[c(4,6)])+
+  # guides(color="none")+
   theme(text=element_text(size=15))
 
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/std_abundance_trend_removal.jpeg"),
@@ -990,16 +1066,17 @@ N_yr <- N_long %>% filter(month(per_start)==10 | (month(per_start)==7 & year==20
 N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
 
 N_yr <- N_yr %>% filter(elim_area_idx%in%c(5,7))
-N_yr$value_prev<- NA
+N_yr$N_prev<- NA
 for(i in 1:nrow(N_yr)){
   if(N_yr$per_temp[i]>1){
-    N_yr$value_prev[i] <- N_yr$value[N_yr$per_temp==(N_yr$per_temp[i]-1) &
+    N_yr$N_prev[i] <- N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
                                        N_yr$elim_area_idx==N_yr$elim_area_idx[i] &
-                                       N_yr$samp_idx==N_yr$samp_idx[i]]
+                                       N_yr$samp==N_yr$samp[i] &
+                                       N_yr$chain==N_yr$chain[i]]
   }
 }
 
-N_yr$per_change <- (N_yr$value-N_yr$value_prev)/N_yr$value_prev
+N_yr$per_change <- (N_yr$N-N_yr$N_prev)/N_yr$N_prev
 
 N_yr_sum <- N_yr %>% 
   filter(year>2020) %>% 
@@ -1009,50 +1086,50 @@ N_yr_sum <- N_yr %>%
             lci=quantile(per_change,0.025,na.rm=T),
             uci=quantile(per_change,0.975,na.rm=T)) 
 
-write.csv(N_yr_sum,paste0("./Model outputs/Plots/",subfolder,"/N_change_table.csv"))
+write.csv(N_yr_sum,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/N_change_table.csv"))
 
 
 # removal probability -----------------
 ## aerial ----------------
-aerial_eff_sc <- seq(min(dat_aerial$eff_area_hrs),max(dat_aerial$eff_area_hrs),by=0.005)
-aerial_eff <- aerial_eff_sc * attr(dat_aerial$eff_area_hrs_sc,"scaled:scale") +
-  attr(dat_aerial$eff_area_hrs_sc,"scaled:center")
+aerial_eff_sc <- seq(min(dat_aerial$effect_area_hrs),max(dat_aerial$effect_area_hrs),by=0.005)
+aerial_eff <- aerial_eff_sc * attr(dat_aerial$effect_area_hrs_sc,"scaled:scale") +
+  attr(dat_aerial$effect_area_hrs_sc,"scaled:center")
 aerial_area_mn <- mean(dat_aerial$prop_ea_impact[dat_aerial$prop_ea_impact!=0])
 
 det_a <- sapply(1:(nmcmc*nChains),function(i){aerial_area_mn*
     boot::inv.logit(delta$`Aerial Intercept`[i] + delta$`Aerial Slope`[i]*aerial_eff_sc)})
 
-det_a_sum <- data.frame(eff_area_hrs=aerial_eff,
+det_a_sum <- data.frame(effect_area_hrs=aerial_eff,
                         mn=rowMeans(det_a),
                         md=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.5)),
                         lci=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.025)),
                         uci=sapply(1:nrow(det_a),function(i)quantile(det_a[i,],prob=0.975)))
 
 g_a <- ggplot(det_a_sum)+
-  geom_ribbon(aes(x=eff_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=eff_area_hrs,y=md))+
+  geom_ribbon(aes(x=effect_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
+  geom_line(aes(x=effect_area_hrs,y=md))+
   ylab("Detection probability")+
   xlab(expression(paste("Hours flown per k",m^2)))+
   theme(text=element_text(size=15))
 
 ## trap ----------------------
-trap_eff_sc <- seq(min(dat_trap$eff_area_hrs),max(dat_trap$eff_area_hrs),by=0.05)
-trap_eff <- trap_eff_sc * attr(dat_trap$eff_area_hrs_sc,"scaled:scale") +
-  attr(dat_trap$eff_area_hrs_sc,"scaled:center")
+trap_eff_sc <- seq(min(dat_trap$effect_area_hrs),max(dat_trap$effect_area_hrs),by=0.05)
+trap_eff <- trap_eff_sc * attr(dat_trap$effect_area_hrs_sc,"scaled:scale") +
+  attr(dat_trap$effect_area_hrs_sc,"scaled:center")
 trap_area_mn <- mean(dat_trap$prop_ea_impact[dat_trap$prop_ea_impact!=0])
 
 det_t <- sapply(1:(nmcmc*nChains),function(i){trap_area_mn*
     boot::inv.logit(delta$`Trap Intercept`[i] + delta$`Trap Slope`[i]*trap_eff_sc)})
 
-det_t_sum <- data.frame(eff_area_hrs=trap_eff,
+det_t_sum <- data.frame(effect_area_hrs=trap_eff,
                         mn=rowMeans(det_t),
                         md=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.5)),
                         lci=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.025)),
                         uci=sapply(1:nrow(det_t),function(i)quantile(det_t[i,],prob=0.975)))
 
 g_t <- ggplot(det_t_sum)+
-  geom_ribbon(aes(x=eff_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
-  geom_line(aes(x=eff_area_hrs,y=md))+
+  geom_ribbon(aes(x=effect_area_hrs,ymin=lci,ymax=uci),alpha=0.3)+
+  geom_line(aes(x=effect_area_hrs,y=md))+
   ylab("Detection probability")+
   xlab(expression(paste("Hours spent trapping per k",m^2)))+
   theme(text=element_text(size=15))
@@ -1066,15 +1143,15 @@ ggsave(g_all,file=paste0("./Model Outputs/Plots/",subfolder,"/rem_det_curve_all.
 ##removal comparisons --------------------
 a_mn <- max(dat_aerial$prop_ea_impact)*
   boot::inv.logit(delta[,"Aerial Intercept"] + delta[,"Aerial Slope"]* 
-                    max(dat_aerial$eff_area_hrs_sc[dat_aerial$eff_area_hrs!=0]))
+                    max(dat_aerial$effect_area_hrs_sc[dat_aerial$effect_area_hrs!=0]))
 
-max(dat_aerial$eff_area_hrs)
+max(dat_aerial$effect_area_hrs)
 max(dat_aerial$prop_ea_impact)
 
 t_mn <- max(dat_trap$prop_ea_impact)*
   boot::inv.logit(delta[,"Trap Intercept"] + delta[,"Trap Slope"]* 
-                    max(dat_trap$eff_area_hrs_sc[dat_trap$eff_area_hrs!=0]))
-max(dat_trap$eff_area_hrs)
+                    max(dat_trap$effect_area_hrs_sc[dat_trap$effect_area_hrs!=0]))
+max(dat_trap$effect_area_hrs)
 max(dat_trap$prop_ea_impact)
 
 rem_mn <- cbind.data.frame(aerial=a_mn,trap=t_mn)
@@ -1140,62 +1217,64 @@ round(N_sum_6$uci_lambda_prop_dens[which.max(N_sum_6$md_lambda_prop_dens)],2)
 #   scale_fill_discrete(name="Elimination Area")+
 #   xlab("Season")+ylab("No. feral swine removed")+
 #   theme(text=element_text(size=15))
-dat_rem_sum$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum$Area_Name)
-dat_rem_sum_all$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum_all$Area_Name)
 
-dat_rem_sum_all %>% 
-  filter(Area_Name!="0") %>% 
-  ggplot()+geom_bar(aes(y=removal,x=month,fill=method),
-                    stat="identity")+
-  facet_wrap(.~Area_Name_label)+
-  scale_fill_discrete(name="Removal method")+
-  xlab("Season")+ylab("No. feral swine removed")+
-  theme(text=element_text(size=15))
-ggsave(filename = "./Model outputs/Plots/Raw Data/raw_removal_ea.jpeg",
-       device="jpeg",height=5,width=7,units="in")
-
-#effort ---------------------
-dat_rem_sum_all %>% 
-  filter(Area_Name!="0") %>% 
-  ggplot()+geom_bar(aes(y=tot_hrs,x=month,fill=method),
-                    stat="identity")+
-  facet_wrap(.~Area_Name_label)+
-  scale_fill_discrete(name="Removal method")+
-  xlab("Season")+ylab("No. hours spent removing feral swine")+
-  theme(text=element_text(size=15))
-ggsave(filename = "./Model outputs/Plots/Raw Data/raw_effort_hours.jpeg",
-       device="jpeg",height=5,width=7,units="in")
-
-#raw cpue -------------------
-dat_rem_sum_all %>% 
-  filter(Area_Name!="0") %>% 
-  ggplot()+geom_bar(aes(y=removal/tot_hrs,x=month,fill=method),
-                    stat="identity",position="dodge")+
-  facet_wrap(.~Area_Name_label)+
-  scale_fill_discrete(name="Removal method")+
-  xlab("Season")+ylab("No. of pigs removed per hour of effort")+
-  theme(text=element_text(size=15))
-
-ggsave(filename = "./Model outputs/Plots/Raw Data/raw_cpue.jpeg",
-       device="jpeg",height=5,width=7,units="in")
+# dat_rem_sum$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum$Area_Name)
+# dat_rem_sum_all$Area_Name_label <- paste("Eliminaton Area",dat_rem_sum_all$Area_Name)
+# 
+# dat_rem_sum_all %>% 
+#   filter(Area_Name!="0") %>% 
+#   ggplot()+geom_bar(aes(y=removal,x=month,fill=method),
+#                     stat="identity")+
+#   facet_wrap(.~Area_Name_label)+
+#   scale_fill_discrete(name="Removal method")+
+#   xlab("Season")+ylab("No. feral swine removed")+
+#   theme(text=element_text(size=15))
+# ggsave(filename = "./Model outputs/Plots/Raw Data/raw_removal_ea.jpeg",
+#        device="jpeg",height=5,width=7,units="in")
+# 
+# #effort ---------------------
+# dat_rem_sum_all %>% 
+#   filter(Area_Name!="0") %>% 
+#   ggplot()+geom_bar(aes(y=tot_hrs,x=month,fill=method),
+#                     stat="identity")+
+#   facet_wrap(.~Area_Name_label)+
+#   scale_fill_discrete(name="Removal method")+
+#   xlab("Season")+ylab("No. hours spent removing feral swine")+
+#   theme(text=element_text(size=15))
+# ggsave(filename = "./Model outputs/Plots/Raw Data/raw_effort_hours.jpeg",
+#        device="jpeg",height=5,width=7,units="in")
+# 
+# #raw cpue -------------------
+# dat_rem_sum_all %>% 
+#   filter(Area_Name!="0") %>% 
+#   ggplot()+geom_bar(aes(y=removal/tot_hrs,x=month,fill=method),
+#                     stat="identity",position="dodge")+
+#   facet_wrap(.~Area_Name_label)+
+#   scale_fill_discrete(name="Removal method")+
+#   xlab("Season")+ylab("No. of pigs removed per hour of effort")+
+#   theme(text=element_text(size=15))
+# 
+# ggsave(filename = "./Model outputs/Plots/Raw Data/raw_cpue.jpeg",
+#        device="jpeg",height=5,width=7,units="in")
 
 
 # summary stats ------------------
 ##raw data ------------------------
-dat_rem %>% 
-  group_by(method) %>% 
-  summarise(sum(tot_rem),
-            sum(tot_hrs))
-
-sysbait_det_eff %>% 
-  ungroup() %>% 
-  summarise(dets=sum(detection),
-            trap_nights=sum(trap_nights))
+# dat_rem %>% 
+#   group_by(method) %>% 
+#   summarise(sum(tot_rem),
+#             sum(tot_hrs))
+# 
+# sysbait_det_eff %>% 
+#   ungroup() %>% 
+#   summarise(dets=sum(detection),
+#             trap_nights=sum(trap_nights))
 
 # subfolder <- "NFSP"
 #save posterior summaries ---------------------------------
 # st_write(eff_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/eff_sum_sf.shp"),append=F)
 # st_write(N_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/N_sum_sf.shp"),append=F)
+
 st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"),append=F)
 save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
@@ -1203,7 +1282,7 @@ save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nea,nsites,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
-     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/posterior_summaries_04SEP24.RData"))
+     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/posterior_summaries_15OCT24.RData"))
 
 
           
