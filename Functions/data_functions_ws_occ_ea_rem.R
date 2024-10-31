@@ -530,10 +530,23 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   sysbait_det_eff$eff_hrs_km <- sysbait_det_eff$eff_hrs/sysbait_det_eff$area_km
   
   ##add proportion of area covered by feral swine distribution ----------------------
+  ## LAGGED a year
   load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/ssg_nfsp_all.RData")
   
+  ssg_nfsp <- rbind.data.frame(ssg_nfsp,
+                   data.frame(SiteID=1:length(unique(ssg_nfsp$SiteID)),
+                              full_ar=NA,intrsc_=NA,prp_nfs=NA,year=2024))
+  
+  ssg_nfsp$prp_nfs_lag <- NA
+  for(i in 1:nrow(ssg_nfsp)){
+    if(ssg_nfsp$year[i]>2015){
+      ssg_nfsp$prp_nfs_lag[i] <- ssg_nfsp$prp_nfs[ssg_nfsp$SiteID==ssg_nfsp$SiteID[i] &
+                                          ssg_nfsp$year==(ssg_nfsp$year[i]-1)]
+    }
+  }
+
   sysbait_det_eff <- sysbait_det_eff %>% 
-    left_join(ssg_nfsp %>% select(SiteID,prp_nfs,year) %>% 
+    left_join(ssg_nfsp %>% select(SiteID,prp_nfs,prp_nfs_lag,year) %>% 
                 rename(fy=year) %>% 
                 mutate(site_idx=as.character(as.numeric(SiteID))) %>% 
                 dplyr::select(-SiteID))
@@ -564,9 +577,9 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   #   left_join(ao %>%
   #               mutate(Date=as.Date(day,format="%Y-%m-%d"),
   #                      Area_Name=as.character(Area_Name)) %>%
-  #               select(Area_Name,Date,flight_time,prop_ea_flown,
+  #               select(Area_Name,Date,flight_time_hr,prop_ea_flown,
   #                      intersect_area,Method)) %>%
-  #   rename(eff_hrs=flight_time,
+  #   rename(eff_hrs=flight_time_hr,
   #          prop_ea_impact= prop_ea_flown) %>%
   #   mutate(effect_area_km=intersect_area/1e6)
   
@@ -599,15 +612,15 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   }
   
   ### join aerial gps data -----------------------------
-  ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean.csv")
+  ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean_1000ft_buff.csv")
   ao$method<-"Aerial"
-  
+
   ao <- ao %>% 
     rename(prop_ea_impact=prop_ea_flown) %>% 
-    mutate(Date=as.Date(day),
+    mutate(Date=as.Date(Date),
            Area_Name=as.character(Area_Name),
            effect_area_km=as.numeric(intersect_area)/1e6) %>% 
-    select(Area_Name,Date,method,flight_time,effect_area_km,prop_ea_impact) %>% 
+    select(Area_Name,Date,method,flight_time_hr,effect_area_km,prop_ea_impact) %>% 
     filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
   
   ao$period <- NA
@@ -617,16 +630,16 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   }
   
   # eff_day <- eff_day %>%
-  #   left_join(ao %>% rename(Date=day,
+  #   left_join(ao %>% rename(Date=Date,
   #                           prop_ea_impact=prop_ea_flown) %>% 
   #               mutate(Date=as.Date(Date),
   #                      Area_Name=as.character(Area_Name),
   #                      effect_area_km=as.numeric(intersect_area)/1e6) %>% 
-  #               select(Area_Name,Date,method,flight_time,effect_area_km,prop_ea_impact))
+  #               select(Area_Name,Date,method,flight_time_hr,effect_area_km,prop_ea_impact))
   
   #remove MIS flight times and replace with GPS tracks--------------------
   # eff_day$tot_hrs[eff_day$method=="Aerial"] <- NA
-  # eff_day$tot_hrs[eff_day$method=="Aerial"] <- eff_day$flight_time[eff_day$method=="Aerial"]
+  # eff_day$tot_hrs[eff_day$method=="Aerial"] <- eff_day$flight_time_hr[eff_day$method=="Aerial"]
   
   #calculate area buffers for ground and trap --------------
   rem_site_trap <- rem_site_sf %>% filter(Method=="Trap") %>% 
@@ -678,7 +691,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   #merge with aerial ops track data ----------------
   rem_day_ea <- rem_day_ea %>% 
     full_join(ao,by=c("Date","period","method","Area_Name")) %>% 
-    rename(tot_hrs=flight_time)
+    rename(tot_hrs=flight_time_hr)
   
   for(i in 1:nrow(rem_day_ea)){
     if(is.na(rem_day_ea$effect_area_km.x[i])){
@@ -714,6 +727,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     }
   }
   
+  #remove removal observations with no effort associated with them
   rem_eff_ea$tot_rem[is.na(rem_eff_ea$tot_rem)] <- 0
   
   rem_eff_ea <- rem_eff_ea %>% 
@@ -724,6 +738,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   ea_df <- ea %>% st_drop_geometry()
   
+  #add ea areas and proportion of ea impacted by removal method
   for(i in 1:nrow(rem_eff_ea)){
     if(is.na(rem_eff_ea$ea_area_km[i])){
       rem_eff_ea$ea_area_km[i] <- ea_df$area_km[ea_df$Area_Name==rem_eff_ea$Area_Name[i]]
@@ -733,18 +748,22 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     }
   }
   
+  #remove observations with no area estimate
   rem_eff_ea <- rem_eff_ea %>% filter(!is.na(effect_area_km))
   
+  #remove effort observations over 24 hours per day
   rem_eff_ea <- rem_eff_ea %>% group_by(period,method,Area_Name) %>% 
     mutate(pass_idx=1:n()) %>% 
     filter(tot_hrs<24)
   
+  #calculate effective hours spent removing per area
   rem_eff_ea$effect_area_hrs <- rem_eff_ea$tot_hrs/rem_eff_ea$effect_area_km
   
   #grid landscape covariates to watershed -----------------------------
   if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",grid_typ,".RData"))){
     load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",grid_typ,".RData"))
   } else {
+    nlcd_siteid
     library(terra)
     nlcd <- rast("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/NLCD_MO/NLCD_2019_Land_Cover_L48_20210604_jj2pnCpncP4xHk8rj4R5.tiff")
     study_site <- st_union(study_site_grid)
