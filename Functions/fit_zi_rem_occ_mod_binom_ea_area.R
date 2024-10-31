@@ -42,10 +42,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ## remove area outside of EAs and EA 1 ---------------
   rem_eff_ea$Area_Name[is.na(rem_eff_ea$Area_Name)]<- 0
   
-  rem_eff_ea <- rem_eff_ea %>% filter(Area_Name%in%c("4","6"))#filter(!(Area_Name%in%c("0","1"))) 
-  rem_eff_ea$elim_area_idx <- as.numeric(rem_eff_ea$Area_Name)+1
+  rem_eff_ea <- rem_eff_ea %>% filter(Area_Name%in%c("4","6")) %>% 
+    filter(effect_area_hrs<10)
 
-  
+  rem_eff_ea$elim_area_idx <- as.numeric(rem_eff_ea$Area_Name)+1
   rem_eff_ea <- rem_eff_ea %>% rename(period_idx = period) 
   
   ##add 0 data for later periods -aerial -------------
@@ -150,7 +150,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   nfsp <- matrix(NA,nsites,nperiods)
   for(i in 1:nsites){
     for(t in 1:nperiods){
-      nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
+      nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs_lag[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
     }
   }
   nfsp_sc <- scale(nfsp)
@@ -387,11 +387,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "sd_pdet",
                 "delta_t",
                 "delta_a",
-                "sd_theta_t",
-                "sd_theta_a",
                 "N",
                 "pabs",
-                "p_sys",
                 "pelim",
                 "pocc",
                 "p_n1",
@@ -399,11 +396,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "N_latent",
                 "pip_a",
                 "pip_t",
-                "mu_lam",
-                "sd_lam",
                 "yrem_pred_aerial",
                 "yrem_pred_trap",
-                "yocc_pred")
+                "yocc_pred"
+                )
   # }
   mcmc.conf$setMonitors(monitors)
   
