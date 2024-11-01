@@ -636,7 +636,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
       select(Area_Name,Date,method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
       filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
   }
-  hist(ao$flight_time_hr)
+
   ao$period <- NA
   for(i in 1:nrow(ao)){
     ao$period[i] <- period_dates$period[period_dates$per_start<=ao$Date[i] &
