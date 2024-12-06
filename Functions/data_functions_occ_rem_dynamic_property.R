@@ -4,7 +4,7 @@
 ### Notes: numbering weeks strictly within month
 
 # start_date="2020-09-01"
-# end_date="2023-09-30"
+# end_date="2024-09-30"
 
 #grid systematic baiting by watershed
 grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
@@ -567,37 +567,16 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   }
   
   #add property areas ------------------
-  prp_nat <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/National Density/MIS_Pull_01JUL2024/fs_national_property_01JUL2024_clean.shp")
-  sum(unique(rem_prop$PropID)%in%unique(prp_nat$AGRP_PR))/length(unique(rem_prop$PropID))
-  
-  prp_nat <- prp_nat %>% rename(PropID=AGRP_PR) %>% 
-    filter(ST_NAME=="MISSOURI")
-  
-  prp_nat <- prp_nat[!duplicated(prp_nat),]
-  
-  prp_nat_coords <- st_coordinates(prp_nat)
-  prp_nat$long <- prp_nat_coords[,1]
-  prp_nat$lat <- prp_nat_coords[,2]
-  
-  #multiple parcels in same property
-  prp_nat %>% st_drop_geometry() %>% 
-      group_by(PropID) %>% 
-      summarise(n=n(),
-                lat=length(unique(lat)),
-                long=length(unique(long))) %>% 
-      filter(n>1)
-
-  prp_nat <- prp_nat %>%
-    st_drop_geometry() %>% 
-    group_by(PropID) %>% 
-    summarise(prop_area_acres = sum(unique(PRPS_QT)),
-              lat_prop=unique(lat),
-              long_prop=unique(long))
+  prp_nat <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fs_national_property_01JUL2024_clean_missouri_single.shp")
+  prp_nat <- prp_nat %>% 
+    rename(prop_name=prop_nm,
+           prop_area_acres=prp_r_c,
+           prop_area_km=prp_r_k)
+  sum(unique(rem_prop$PropID)%in%unique(prp_nat$PropID))/length(unique(rem_prop$PropID))
 
   # rem_prop %>% left_join(prp_nat) %>% filter(!is.na(prop_area_acres)) %>% nrow
   rem_prop <- rem_prop %>% left_join(prp_nat)
-  rem_prop$prop_area_km <- rem_prop$prop_area_acres * 0.00404686 
-  
+
   #MIS data is more complete
   # rem_prop %>% filter(Lat=="" & !is.na(lat_prop))
   # rem_prop %>% filter(Long=="" & !is.na(long_prop))
@@ -621,11 +600,11 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     summarise(tot_rem=sum(Total),
               # n_events=n(),
               n_events=sum(WTCM_QTY),
-              prop_area_km=unique(prop_area_acres),
+              prop_area_km=unique(prop_area_km),
               county_area_km=unique(county_area_km)) %>%
     filter(Date>=min(sysbait_det_eff$subper_start) &
                Date<=max(sysbait_det_eff$subper_end))
-  
+
   ##clip systematic baiting to removals --------------------
   sysbait_det_eff <- sysbait_det_eff %>% 
     filter(subper_start>=min(rem_prop$Date) &
@@ -639,7 +618,11 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     full_join(ao,by=c("Date","period","PropID","Method")) %>% 
     rename(tot_hrs=flight_time_hr) %>% 
     as.data.frame()
-
+  
+  rem_day_prop %>% group_by(PropID) %>% 
+    summarise(n=length(unique(prop_area_km))) %>% 
+    filter(n>1)
+  
   #remove systematic baiting ---------------
   eff_day <- eff_day %>% filter(Method!="SysBait" & Method!="Ground")
   
@@ -675,8 +658,8 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     filter(!is.na(PropID))
   
   rem_eff_prop$n_events <- sapply(1:nrow(rem_eff_prop),function(i){
-    x <- max(rem_eff_prop$n_events[i],rem_eff_prop$n_events_eff[i],na.rm=T)
-    if(is.infinite(x)){x<- NA}
+    suppressWarnings(x <- max(rem_eff_prop$n_events[i],rem_eff_prop$n_events_eff[i],na.rm=T))
+    if(is.infinite(x)){x<- 1}
     return(x)
   })
   
@@ -684,7 +667,15 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   #multiply trap effort by effective area
   rem_eff_prop$effect_area_km[rem_eff_prop$Method=="Trap"] <- 
-    6.7 * rem_day_prop$n_events[rem_eff_prop$Method=="Trap"]
+    6.7 * rem_eff_prop$n_events[rem_eff_prop$Method=="Trap"]
+  
+  #fill in missing property areas from join
+  rem_eff_prop <- rem_eff_prop %>% 
+    group_by(PropID) %>%
+    fill(prop_area_km, .direction = 'updown') %>%
+    fill(county_area_km, .direction = 'updown') %>%
+    fill(SiteID, .direction = 'updown') %>%
+    ungroup()
   
   #fill in NA's for property area
   for(i in 1:nrow(rem_eff_prop)){
@@ -696,20 +687,12 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     }
   }
   
-  prp_sites <- rem_prop %>% select(PropID,SiteID) %>% distinct()
-  for(i in 1:nrow(rem_eff_prop)){
-    if(is.na(rem_eff_prop$SiteID[i])){
-      x <- prp_sites$SiteID[prp_sites$PropID==rem_eff_prop$PropID[i]]
-      if(length(x)>0){
-        rem_eff_prop$SiteID[i] <- x
-      }
-    }
-  }
-  
   #fill in proportion of property impacted 
   rem_eff_prop$prop_property_impact[is.na(rem_eff_prop$prop_property_impact)] <-
     rem_eff_prop$effect_area_km[is.na(rem_eff_prop$prop_property_impact)]/
     rem_eff_prop$prop_area_km[is.na(rem_eff_prop$prop_property_impact)]
+  
+  rem_eff_prop$prop_property_impact[rem_eff_prop$prop_property_impact>1] <- 1
 
   #check
   # unique(rem_eff_prop$PropID[is.na(rem_eff_prop$SiteID)])%in%prp_sites$PropID
