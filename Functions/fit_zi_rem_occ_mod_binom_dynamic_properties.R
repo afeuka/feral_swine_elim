@@ -2,7 +2,8 @@
 ### Author: Abbey Feuka
 ### Date: 27NOV2023 edited 22FEB2024
 ### Notes: 
-
+# 
+# source("./Functions/avail_fun.R")
 # monitors = NA
 # niter=10000
 # burnProp=0.1
@@ -33,6 +34,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   
   # data setup -------------------------------------------------
   dat_rem <- rem_eff_prop
+  range(rem_eff_prop$county_area_km,na.rm=T)
   
   #filter no effect area (for now)
   dat_rem <- dat_rem %>% filter(!is.na(effect_area_km) & !is.na(effect_area_hrs))
@@ -46,18 +48,19 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   
   ## only include sites with consistent removal ----------
   site_rem <- dat_rem %>%
-      group_by(Date,PropID) %>%
-      summarise(tot_rem=sum(tot_rem)) %>%
-      filter(tot_rem>0) %>%
-      group_by(PropID) %>%
-      summarise(n=n()) %>%
-      arrange(desc(n))
-
+    group_by(Date,PropID) %>%
+    summarise(tot_rem=sum(tot_rem)) %>%
+    filter(tot_rem>0) %>%
+    group_by(PropID) %>%
+    summarise(n=n()) %>%
+    arrange(desc(n))
+  
   rem_cutoff <- quantile(site_rem$n,prob=0.75)
   site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
   dat_rem <- dat_rem %>% filter(PropID%in%site_rem_cutoff$PropID)
-
+  
   dat_rem <- dat_rem %>% rename(period_idx = period) 
+  dat_rem$prop_rem_idx <- as.numeric(as.factor(dat_rem$PropID))
   
   # dat_rem %>% group_by(Method,period_idx,Method,pass_idx) %>% 
   #   summarise(n=n()) %>% 
@@ -69,33 +72,46 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     select(period_idx) %>% distinct
   a_pers_n <- which(!(1:max(dat_rem$period_idx)%in%a_pers$period_idx)) #no aerial ops during these periods
   
-  dat_rem$prop_rem_idx <- as.numeric(as.factor(dat_rem$PropID))
   # dat_rem$site_occ_idx <- as.numeric(dat_rem$SiteID)
-    
+  
   sids <- sort(unique(dat_rem$prop_rem_idx))
-    
+  
   samp <- dat_rem[1:(length(a_pers_n)*length(sids)),] #use existing data frame structure and clear fields
   samp$Method <- "Aerial"
   samp$period_idx <- rep(a_pers_n,length(sids))
   samp$prop_rem_idx <- sort(rep(unique(sids),length(a_pers_n)))
-  samp$SiteID <-samp$Date <- samp$Date <- samp$PropID <- NA
+  samp <- samp %>% 
+    ungroup() %>% 
+    select(-c('SiteID','PropID','prop_area_km','county_area_km'))%>% 
+    left_join(dat_rem %>% 
+                ungroup() %>% 
+                select(prop_rem_idx,SiteID,PropID,
+                       prop_area_km,county_area_km) %>% 
+                distinct())
+  
+  samp$Date <- NA
   samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
     samp$prop_property_impact <- samp$effect_area_km <- 0
   samp$pass_idx <- 1
+  
   dat_rem <- rbind(dat_rem,samp)
-
+  
+  # dat_rem %>% group_by(prop_rem_idx) %>% 
+  #   summarise(n=length(unique(prop_area_km))) %>% 
+  #   filter(n>1)
+  
   ##occupancy data-----------------------
   dat_occ <- sysbait_det_eff %>% 
-      # mutate(site_occ_idx = as.numeric(SiteID)) %>% 
-      group_by(period,SiteID) %>% 
-      summarise(detections=sum(detection),
-                nweeks = length(unique(subper_start)),
-                per_start=min(subper_start),
-                trap_nights_km = sum(trap_nights_km)
-      ) %>% 
-      rename(period_idx=period) %>% 
-      arrange(period_idx,SiteID)
-
+    # mutate(site_occ_idx = as.numeric(SiteID)) %>% 
+    group_by(period,SiteID) %>% 
+    summarise(detections=sum(detection),
+              nweeks = length(unique(subper_start)),
+              per_start=min(subper_start),
+              trap_nights_km = sum(trap_nights_km)
+    ) %>% 
+    rename(period_idx=period) %>% 
+    arrange(period_idx,SiteID)
+  
   dat_occ$trap_nights_km_sc <- scale(dat_occ$trap_nights_km)
   
   site_idx_lookup <- dat_rem %>% 
@@ -104,19 +120,39 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     distinct() %>% 
     arrange(prop_rem_idx) %>% 
     drop_na
-
+  
   #fill in missing SiteIDs from added aerial 0's
   dat_rem$SiteID[is.na(dat_rem$SiteID)] <- 
     unlist(sapply(1:length(dat_rem$SiteID[is.na(dat_rem$SiteID)]), function(x){
       site_idx_lookup$SiteID[site_idx_lookup$prop_rem_idx==
-                                     dat_rem$prop_rem_idx[is.na(dat_rem$SiteID)][x]]
+                               dat_rem$prop_rem_idx[is.na(dat_rem$SiteID)][x]]
     }))
-
+  
   # #check no duplicated values from adding dummy data
   # dat_rem %>% group_by(prop_rem_idx,period_idx,Method,pass_idx) %>%
   #   summarise(n=n()) %>%
   #   filter(n>1)
-
+  
+  #county indices
+  dat_rem$county_idx <- as.numeric(as.factor(dat_rem$SiteID))
+  
+  county_idx <- dat_rem %>% 
+    ungroup() %>% 
+    select(prop_rem_idx,county_idx,SiteID,prop_area_km,county_area_km) %>% 
+    distinct() %>% 
+    arrange(prop_rem_idx) %>% 
+    mutate(property_prop_county=prop_area_km/county_area_km)
+  
+  ## map occupancy counties to removal counties
+  rem_county_to_occ_site <- dat_occ %>% 
+    ungroup() %>% 
+    select(SiteID) %>% 
+    distinct() %>% 
+    left_join(county_idx %>% 
+                select(county_idx,SiteID) %>% 
+                distinct()) %>% 
+    drop_na()
+  
   ##covariates -----------------------------
   if(nfsp_reg){
     nbeta <- 4
@@ -136,9 +172,13 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ##indices for nimble ---------------------------------
   nsites_occ <- length(unique(dat_occ$SiteID))
   nproperties <- length(unique(dat_rem$prop_rem_idx))
+  ncounties <- length(unique(dat_rem$SiteID))
   nperiods <- length(unique(dat_occ$period_idx))
   
   ## removal data-------------------
+  #for instances of no aerial ops, set effort area to small number to avoid NaN in model division
+  dat_rem$effect_area_km[dat_rem$effect_area_km==0 & dat_rem$tot_hrs==0] <- 0.001
+  
   ##split by removal type -------------------
   dat_aerial <- dat_rem %>% filter(Method=="Aerial")
   dat_trap <- dat_rem %>% filter(Method=="Trap")
@@ -149,11 +189,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     for(t in 1:nperiods){
       for(j in 1:max(dat_aerial$pass_idx,dat_trap$pass_idx)){
         x <- dat_aerial$prop_property_impact[dat_aerial$pass_idx==j &
-                                         dat_aerial$PropID==i &
-                                         dat_aerial$period_idx==t]
+                                               dat_aerial$prop_rem_idx==i &
+                                               dat_aerial$period_idx==t]
         z <- dat_trap$prop_property_impact[dat_trap$pass_idx==j &
-                                       dat_trap$PropID==i &
-                                       dat_trap$period_idx==t]
+                                             dat_trap$prop_rem_idx==i &
+                                             dat_trap$period_idx==t]
         if(length(x)>0){
           gamma_a[j,i,t] <- max(x) 
         }
@@ -182,11 +222,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       save(nfsp,nfsp_sc,file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP County Overlap/nfsp_lag_2020_",max(year(sysbait_det_eff$subper_start)),".RData"))
     }
   }
-
+  
   ##removal matrix ------------------
   remtot <- dat_rem %>% group_by(prop_rem_idx,period_idx) %>%
-      reframe(removal=sum(tot_rem))
-    
+    reframe(removal=sum(tot_rem))
+  
   yrem <- matrix(0,nproperties,nperiods)
   prop_idx <- sort(unique(dat_rem$prop_rem_idx))
   for(j in 1:nproperties){
@@ -195,19 +235,33 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       if(length(x)>0){
         yrem[j,t] <- x
       }}}
-
+  
+  remtot_counties <- dat_rem %>% 
+    group_by(SiteID,period_idx) %>%
+    reframe(removal=sum(tot_rem))
+  count_idx <- sort(unique(dat_rem$SiteID))
+  yrem_counties<- matrix(0,ncounties,nperiods)
+  for(j in 1:ncounties){
+    for(t in 1:nperiods){
+      x <- remtot_counties$removal[remtot_counties$SiteID==count_idx[j] & remtot_counties$period_idx==t]
+      if(length(x)>0){
+        yrem_counties[j,t] <- x
+      }}}
+  
   #mean trapping effort  -------------------------------
   mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
     attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
   
   # fit model ---------------------------
   # range(rowSums(yrem))
-  # hist(rnbinom(10000,size=300,prob=0.5))
-  # hist(rgamma(10000,500,1))
-  # hist(rbeta(10000,2,2))
+  # hist(rnbinom(10000,size=1000,prob=0.1))
+  # hist(rgamma(10000,1000,0.1))
+  # hist(rbeta(10000,1,2))
+
   ## model specification -------------------------------------------------
   ZIbinomcode <- eval(str2lang(paste("nimbleCode({",
                                      "
+    #priors
     for(i in 1:nbeta){
       beta[i] ~ dlogis(0,1)
     }
@@ -232,48 +286,56 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
     
-    ",
-    if(abund_scale=="watersheds"){
-      "
-      p_n1 ~ dbeta(2,2)
-      r_n1 ~ dgamma(500,1) 
-      "
-    } else {
-      "
-      p_n1 ~ dbeta(0.1,5)
-      r_n1 ~ dgamma(6,1) 
-      "
-    },
+    # p_n1 ~ dbeta(2,2)
+    # r_n1 ~ dgamma(800,1) 
+    p_n1 ~ dbeta(1,2)
+    r_n1 ~ dgamma(1000,0.1) 
     
-    "
-    mu_lam ~ dnorm(0,0.15)
-    sd_lam ~ dgamma(1,20)
+    # mu_lam ~ dnorm(0,0.15)
+    # sd_lam ~ dgamma(1,20)
+    lambda ~ dunif(0.5,2)
+    
+    sd_pcounty ~ dgamma(10,10)
     
     #mean effort detection probability
     mu_pdet_mn <- alpha[1] + alpha[2]*mn_te
     logit(p_sys) ~ dnorm(mu_pdet_mn,sd=sd_pdet)
-
-    for(i in 1:nproperties){
-      log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
-      N[i,1] ~ dnegbin(size=r_n1,prob=p_n1)
+    
+    for(w in 1:ncounties){
+      N_site[w,1] ~ dnegbin(size=r_n1,prob=p_n1)
       
       for(t in 1:nperiods){
-        N_latent[i,t] <- N[i,t] * z_site[site_idx_occ_rem[i],t]
+        N_site_latent[w,t] <- N_site[w,t] * z_site[rem_county_to_occ_site[w],t]
       }
-      
+    
       #abundace/removal process
       for(t in 2:nperiods){
-        mu_intens[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
-        N[i,t] ~ dpois(mu_intens[i,t])
+        mu_intens[w,t] <- lambda * (N_site[w,t-1] - yrem_mat_counties[w,t-1])
+        N_site[w,t] ~ dpois(mu_intens[w,t])
       }
     }
 
-    for(k in 1:nsites_occ){ #watershed loop
-      for(t in 1:nperiods){
+    for(i in 1:nproperties){
+      # log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
     
-      #county level abundance (sum of properties)
-      # TODO make nimbleFunction to sum N_county dynamically
-      # N_county[k,t] <- sum(N[prop_idx_occ_rem[site_idx_occ_rem==k],t])
+        logit_p_county[i] ~ dnorm(0,1.5)
+        p_county[i] <- exp(logit_p_county[i])/(1+exp(logit_p_county[i]))
+        logit_prop_county_obs[i] ~ dnorm(logit_p_county[i],sd=sd_pcounty)
+      
+      for(t in 1:nperiods){
+        # N_prop_latent[i,t] <- N[i,t] * z_site[site_idx_occ_rem[i],t]
+        N_prop[i,t] ~ dbinom(size=N_site_latent[county_idx_rem[i],t],prob=p_county[i])
+      }
+      
+      #abundace/removal process
+      # for(t in 2:nperiods){
+        # mu_intens[i,t] <- lambda * (N[i,t-1] - yrem_mat[i,t-1])
+        # N[i,t] ~ dpois(mu_intens[i,t])
+      # }
+    }
+
+    for(k in 1:nsites_occ){ #occupancy site loop
+      for(t in 1:nperiods){
     
       ",
     if(nfsp_reg){
@@ -303,37 +365,36 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     ##aerial
     for(i in 1:nsamp_aerial){
       mu_theta_a[i] <- delta_a[1] + delta_a[2]*eff_area_a[i]
-      logit(theta_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]]) ~ 
+      logit(theta_a[pass_idx_a[i],prop_idx_a[i],period_idx_a[i]]) ~ 
         dnorm(mu_theta_a[i],sd=sd_theta_a)
       
       pip_a[i] <-
         avail_fun(pass=pass_idx_a[i],
-                  gamma=gamma_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]],
-                  gamma_past=gamma_a[1:(pass_idx_a[i]-1),site_idx_a[i],period_idx_a[i]],
-                  theta=theta_a[pass_idx_a[i],site_idx_a[i],period_idx_a[i]],
-                  theta_past=theta_a[1:(pass_idx_a[i]-1),site_idx_a[i],period_idx_a[i]])
+                  gamma=gamma_a[pass_idx_a[i],prop_idx_a[i],period_idx_a[i]],
+                  gamma_past=gamma_a[1:(pass_idx_a[i]-1),prop_idx_a[i],period_idx_a[i]],
+                  theta=theta_a[pass_idx_a[i],prop_idx_a[i],period_idx_a[i]],
+                  theta_past=theta_a[1:(pass_idx_a[i]-1),prop_idx_a[i],period_idx_a[i]])
       
-      yrem_aerial[i] ~ dbinom(size=N_latent[site_idx_a[i],period_idx_a[i]], prob=pip_a[i])
-      yrem_pred_aerial[i] ~ dbinom(size=N_latent[site_idx_a[i],period_idx_a[i]], prob=pip_a[i])
+      yrem_aerial[i] ~ dbinom(size=N_prop[prop_idx_a[i],period_idx_a[i]], prob=pip_a[i])
+      yrem_pred_aerial[i] ~ dbinom(size=N_prop[prop_idx_a[i],period_idx_a[i]], prob=pip_a[i])
     }
     
     ##traps
     for(i in 1:nsamp_trap){
-      #removal probability
       mu_theta_t[i] <- delta_t[1] + delta_t[2]*eff_area_t[i]
-      logit(theta_t[pass_idx_t[i],site_idx_t[i],period_idx_t[i]]) ~
+      logit(theta_t[pass_idx_t[i],prop_idx_t[i],period_idx_t[i]]) ~
         dnorm(mu_theta_t[i],sd=sd_theta_t)
       
       pip_t[i] <-
         avail_fun(pass=pass_idx_t[i],
-                  gamma=gamma_t[pass_idx_t[i],site_idx_t[i],period_idx_t[i]],
-                  gamma_past=gamma_t[1:(pass_idx_t[i]-1),site_idx_t[i],period_idx_t[i]],
-                  theta=theta_t[pass_idx_t[i],site_idx_t[i],period_idx_t[i]],
-                  theta_past=theta_t[1:(pass_idx_t[i]-1),site_idx_t[i],period_idx_t[i]])
+                  gamma=gamma_t[pass_idx_t[i],prop_idx_t[i],period_idx_t[i]],
+                  gamma_past=gamma_t[1:(pass_idx_t[i]-1),prop_idx_t[i],period_idx_t[i]],
+                  theta=theta_t[pass_idx_t[i],prop_idx_t[i],period_idx_t[i]],
+                  theta_past=theta_t[1:(pass_idx_t[i]-1),prop_idx_t[i],period_idx_t[i]])
       
       #abundance likelihood
-      yrem_trap[i] ~ dbinom(size=N_latent[site_idx_t[i],period_idx_t[i]], prob=pip_t[i])
-      yrem_pred_trap[i] ~ dbinom(size=N_latent[site_idx_t[i],period_idx_t[i]], prob=pip_t[i])
+      yrem_trap[i] ~ dbinom(size=N_prop[prop_idx_t[i],period_idx_t[i]], prob=pip_t[i])
+      yrem_pred_trap[i] ~ dbinom(size=N_prop[prop_idx_t[i],period_idx_t[i]], prob=pip_t[i])
     }
     
     #occupancy
@@ -351,18 +412,26 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   })
     " #nimblecode end
   )))
-  
+
   ## nimble lists  -------------------------------------------------
   modDat <- list(yrem_trap=dat_trap$tot_rem,
+                 logit_prop_county_obs=logit(county_idx$property_prop_county),
+                 # eff_t_obs=dat_trap$tot_hrs,
+                 # area_t=dat_trap$effect_area_km,
                  eff_area_t=dat_trap$effect_area_hrs_sc[,1],
                  gamma_t=gamma_t,
                  yrem_aerial=dat_aerial$tot_rem,
+                 # eff_a_obs=dat_aerial$tot_hrs,
+                 # area_a=dat_aerial$effect_area_km,
                  eff_area_a=dat_aerial$effect_area_hrs_sc[,1],
                  gamma_a=gamma_a,
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
                  trap_nights_km=dat_occ$trap_nights_km_sc[,1],
-                 yrem_mat=yrem)
+                 # yrem_mat=yrem
+                 yrem_mat_counties=yrem_counties
+                 )
+  
   
   ### constants -----------------------------
   const <- list(develop=develop$develop_sc,
@@ -373,14 +442,19 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 nsamp_occ=nrow(dat_occ),
                 nsites_occ=nsites_occ,
                 site_occ_idx=dat_occ$SiteID,
-                prop_idx_occ_rem=site_idx_lookup$prop_rem_idx, #indexes to property site idx over occ idx
-                site_idx_occ_rem=site_idx_lookup$SiteID, #indexes to occupancy site idx over rem idx
+                # prop_idx_occ_rem=site_idx_lookup$prop_rem_idx, #indexes to property site idx over occ idx
+                # site_idx_occ_rem=site_idx_lookup$SiteID, #indexes to occupancy site idx over rem idx
+                rem_county_to_occ_site=rem_county_to_occ_site$SiteID,
+                county_idx_rem=county_idx$county_idx,
                 period_idx_occ=dat_occ$period_idx,
                 nproperties=nproperties,
+                ncounties=ncounties,
                 mn_te=mn_te,
                 eff_weeks=eff_weeks,
-                site_idx_t=dat_trap$prop_rem_idx,
-                site_idx_a=dat_aerial$prop_rem_idx,
+                prop_idx_t=dat_trap$prop_rem_idx,
+                # site_idx_t=dat_trap$county_idx,
+                prop_idx_a=dat_aerial$prop_rem_idx,
+                # site_idx_a=dat_aerial$county_idx,
                 period_idx_t=dat_trap$period_idx,
                 period_idx_a=dat_aerial$period_idx,
                 pass_idx_t=dat_trap$pass_idx,
@@ -389,20 +463,28 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 nsamp_aerial=nrow(dat_aerial)
   )
   const <- const[!sapply(const,is.null)]
-
+  
   ### initial values -----------------------------
   inits <- list(beta=rnorm(nbeta,c(0,0.5),0.1),
-                # lambda=rnorm(1,1,0.05),
-                mu_lam=rnorm(1,0,0.05),
-                sd_lam=rnorm(1,0.01,0.005),
-                N = matrix(NA,nproperties,nperiods),
+                lambda=rnorm(1,1,0.05),
+                # mu_lam=rnorm(1,0,0.05),
+                # sd_lam=rnorm(1,0.01,0.005),
+                N_site = matrix(NA,ncounties,nperiods),
+                # N_prop = matrix(NA,nproperties,nperiods),
                 z_site = matrix(1,nsites_occ,nperiods),
-                p_n1 = rnorm(1,0.0001,0.00001),
-                r_n1 = rnorm(1,6,0.1)
+                p_n1 = rnorm(1,0.1,0.01),
+                r_n1 = rnorm(1,10000,100),
+                logit_p_county = logit(county_idx$property_prop_county),
+                sd_pcounty = rnorm(1,1,0.5)
+                # eff_a = rnorm(nrow(dat_aerial),dat_aerial$tot_hrs,0.001),
+                # eff_t = rnorm(nrow(dat_trap),dat_trap$tot_hrs,0.001)
   )
   inits <- inits[!sapply(inits,is.null)]
   
-  inits$N[,1] <- apply(yrem,1,max)*10
+  # inits$N_prop[,1] <- apply(yrem,1,max)*15
+  inits$N_site[,1] <- apply(yrem_counties,1,max)*100
+  # inits$eff_a[inits$eff_a<1] <- 0.001
+  # inits$eff_t[inits$eff_t<1] <- 0.001
   
   ## nimble configuration -------------------------------------------------
   mod <- nimbleModel(code = ZIbinomcode,
@@ -421,14 +503,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "sd_pdet",
                 "delta_t",
                 "delta_a",
-                "N",
+                "N_site",
                 "pabs",
                 "pelim",
                 "pocc",
                 "p_n1",
                 "r_n1",
-                "N_latent"
-                # "N_county"
+                "N_prop"
+                # "N_site"
                 # "pip_a",
                 # "pip_t",
                 # "yrem_pred_aerial",
@@ -448,17 +530,24 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  
-  # Cmod$mod$N
-  # Cmod$mod$theta_t
-  # Cmod$mod$pip_t
+
+  Cmod$mod$N_prop[dat_trap$prop_rem_idx[1538],dat_trap$period_idx[1538]]
+  boot::inv.logit(Cmod$mod$logit_p_county[dat_trap$prop_rem_idx[1538]])
+  boot::inv.logit(Cmod$mod$logit_prop_county_obs[dat_trap$prop_rem_idx[1538]])
+  dat_trap$tot_rem[1538]
+  # Cmod$mod$N_prop[which(is.nan(rowSums(Cmod$mod$N_prop))),]
+  # yrem[which(is.nan(rowSums(Cmod$mod$N))),]
+  # Cmod$mod$p_n1 <- inits$p_n1
+  # Cmod$mod$r_n1 <- inits$r_n1
+  # Cmod$mod$theta_a
+  # Cmod$mod$pip_t[is.na(Cmod$mod$pip_t)]
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
   # Cmod$mod$calculate("p_n1")
   
-  niter<-100000
-  burnProp<-0.75
+  niter<-50000
+  burnProp<-0.5
   thin <-5
   
   samples <- runMCMC(Cmod$Cmcmc,
