@@ -11,7 +11,6 @@
 # thin=1
 # elim_prob=0.95
 # eff_weeks=10
-# nfsp_reg=T
 # abund_scale="properties"
 
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
@@ -19,7 +18,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                            study_site_grid, #output from mapping huc10 to eas.R
                            # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
-                           nfsp_reg=TRUE,#use nfsp range in occupancy estimates
                            abund_scale,#watersheds or ea
                            monitors, #parameters to save mcmc samples for
                            niter, #number of mcmc iterations
@@ -580,6 +578,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
        nperiods=nperiods,
        nsites_occ=nsites_occ,
        nproperties=nproperties,
+       ncounties=ncounties,
        mn_te=mn_te,
        eff_weeks=eff_weeks,
        dat_occ=dat_occ,
@@ -587,7 +586,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
        dat_aerial=dat_aerial,
        develop=develop,
        agri=agri,
-       site_idx_lookup=site_idx_lookup
+       site_idx_lookup=site_idx_lookup,
+       county_idx=county_idx
   )
 }
 
