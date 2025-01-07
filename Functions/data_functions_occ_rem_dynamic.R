@@ -614,7 +614,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   
   ### join aerial gps data -----------------------------
   if(abund_scale=="watersheds"){
-    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ssg_clean_1000ft_buff.csv")
+    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ssg_clean_528m_buff.csv")
     ao$method<-"Aerial"
     
     ao <- ao %>% 
@@ -625,7 +625,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
       select(SiteID,Area_Name,Date,method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
       filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
   } else {
-    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean_1000ft_buff.csv")
+    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean_528m_buff.csv")
     ao$method<-"Aerial"
     
     ao <- ao %>% 
