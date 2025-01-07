@@ -2,7 +2,7 @@
 ### Author: Abbey Feuka
 ### Date: 27NOV2023 edited 22FEB2024
 ### Notes: 
-
+# 
 # monitors = NA
 # niter=10000
 # burnProp=0.1
@@ -10,7 +10,6 @@
 # thin=1
 # elim_prob=0.95
 # eff_weeks=10
-# nfsp_reg=T
 # abund_scale="watersheds"
 
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
@@ -18,7 +17,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                            study_site_grid, #output from mapping huc10 to eas.R
                            # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
-                           nfsp_reg=TRUE,#use nfsp range in occupancy estimates
                            abund_scale,#watersheds or ea
                            monitors, #parameters to save mcmc samples for
                            niter, #number of mcmc iterations
@@ -53,19 +51,19 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   
   ## only include sites with consistent removal ----------
   if(abund_scale=="watersheds"){
-    # site_rem <- dat_rem %>% 
-    #   group_by(Date,SiteID) %>% 
-    #   summarise(tot_rem=sum(tot_rem)) %>% 
-    #   filter(tot_rem>0) %>%
-    #   group_by(SiteID) %>% 
-    #   summarise(n=n()) %>% 
-    #   arrange(desc(n))
-    # 
-    # rem_cutoff <- quantile(site_rem$n,prob=0.75)
-    # site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
+    site_rem <- dat_rem %>%
+      group_by(Date,SiteID) %>%
+      summarise(tot_rem=sum(tot_rem)) %>%
+      filter(tot_rem>0) %>%
+      group_by(SiteID) %>%
+      summarise(n=n()) %>%
+      arrange(desc(n))
+
+    rem_cutoff <- quantile(site_rem$n,prob=0.90)
+    site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
     
     dat_rem <- dat_rem %>% 
-      # filter(SiteID%in%site_rem_cutoff$SiteID) %>% 
+      filter(SiteID%in%site_rem_cutoff$SiteID) %>%
       filter(!is.na(SiteID))
 
   } else {
@@ -177,11 +175,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   #   filter(n>1)
 
   ##covariates -----------------------------
-  if(nfsp_reg){
-    nbeta <- 4
-  } else {
-    nbeta <- 3
-  }
+  nbeta <- 3
+  nbeta_lam <- 2
   
   nlcd_siteid_orig <- nlcd_siteid
   nlcd_siteid$site_idx <- as.numeric(as.factor(nlcd_siteid$SiteID))
@@ -246,7 +241,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       }
     }
   }
-  
+
   dat_aerial$effect_area_hrs_sc <- scale(dat_aerial$effect_area_hrs)
   dat_trap$effect_area_hrs_sc <- scale(dat_trap$effect_area_hrs)
   
@@ -255,8 +250,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                            elim_idx_orig=unique(dat_rem$elim_area_idx))
   
   ## nfsp covariate ------------------
-  if(!exists("nfsp")){
-    if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")){
+  if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")){
       load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
     } else {
       nfsp <- matrix(NA,nsites_occ,nperiods)
@@ -268,6 +262,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       nfsp_sc <- scale(nfsp)
       save(nfsp,nfsp_sc,file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
     }
+  
+  if(abund_scale=="watersheds"){
+    nfsp <- nfsp[site_rem_cutoff$SiteID,]
+    nfsp_sc <- scale(nfsp)
   }
 
   ##removal matrix ------------------
@@ -305,20 +303,21 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ## model specification -------------------------------------------------
   ZIbinomcode <- eval(str2lang(paste("nimbleCode({",
                                      "
+    #occupancy regression coefficients
     for(i in 1:nbeta){
       beta[i] ~ dlogis(0,1)
     }
-    ",
-    if(nfsp_reg==F){
-      "
-      for(t in 1:nperiods){
-        beta0[t] ~ dnorm(beta[1],sd=sd_beta0)
-      }
-      
-      sd_beta0 ~ dgamma(10,10)
-    "},
     
-    "
+    #lambda regression coefficients
+    for(i in 1:nbeta_lam){
+      beta_lam[i] ~ dnorm(0,5)
+    }
+    
+    for(t in 1:nperiods){
+      beta0[t] ~ dnorm(beta[1],sd=sd_beta0)
+    }
+    sd_beta0 ~ dgamma(10,10)
+
     for(i in 1:2){
       alpha[i] ~ dlogis(0,1)
       delta_t[i] ~ dlogis(0,1)
@@ -328,8 +327,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_pdet ~ dgamma(10,10)
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
+    sd_lam ~ dgamma(1,20)
     
     ",
+
     if(abund_scale=="watersheds"){
       "
       p_n1 ~ dbeta(0.2,12)
@@ -343,8 +344,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     },
     
     "
-    mu_lam ~ dnorm(0,0.15)
-    sd_lam ~ dgamma(1,20)
     
     #mean effort detection probability
     mu_pdet_mn <- alpha[1] + alpha[2]*mn_te
@@ -370,7 +369,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     } else { #watershed level - matched with occupancy
       "
     for(i in 1:nsites_rem){
-      log(lambda[i]) ~ dnorm(mu_lam,sd=sd_lam)
       N[i,1] ~ dnegbin(size=r_n1,prob=p_n1)
       
       for(t in 1:nperiods){
@@ -379,7 +377,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       
       #abundace/removal process
       for(t in 2:nperiods){
-        mu_intens[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
+        mu_lam[i,t-1] <- beta_lam[1] + beta_lam[2]*nfsp[i,t-1]
+        log(lambda[i,t-1]) ~ dnorm(mu_lam[i,t-1],sd=sd_lam)
+      
+        mu_intens[i,t] <- lambda[i,t-1] * (N[i,t-1] - yrem_mat[i,t-1])
         N[i,t] ~ dpois(mu_intens[i,t])
       }
     }
@@ -389,18 +390,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     "
     for(k in 1:nsites_occ){ #watershed loop
       for(t in 1:nperiods){
-      ",
-    if(nfsp_reg){
-      "
-      logit(psi[k,t]) <- beta[1] + beta[2]*nfsp[k,t] +
-        beta[3]*develop[k] + beta[4]*agri[k]
-      "
-    } else {
-      "
       logit(psi[k,t]) <- beta0[t] + beta[2]*develop[k] + beta[3]*agri[k]
-      "
-    },
-    "
+
         #occupancy/detection
         pabs[k,t] <- 1-psi[k,t]
     
@@ -491,6 +482,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     " #nimblecode end
   )))
   
+  ZIbinomcode
+  
   ## nimble lists  -------------------------------------------------
   modDat <- list(yrem_trap=dat_trap$tot_rem,
                  eff_area_t=dat_trap$effect_area_hrs_sc[,1],
@@ -501,13 +494,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
                  trap_nights_km=dat_occ$trap_nights_km_sc[,1],
-                 yrem_mat=yrem)
+                 yrem_mat=yrem,
+                 nfsp=nfsp_sc)
   
   ### constants -----------------------------
   const <- list(develop=develop$develop_sc,
                 agri=agri$agri_sc,
-                nfsp=nfsp_sc,
                 nbeta=nbeta,
+                nbeta_lam=nbeta_lam,
                 nperiods=nperiods,
                 nsamp_occ=nrow(dat_occ),
                 nsites_occ=nsites_occ,
@@ -557,17 +551,24 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   }
 
   ### initial values -----------------------------
-  inits <- list(beta=rnorm(nbeta,c(0,0.5),0.1),
-                # lambda=rnorm(1,1,0.05),
-                mu_lam=rnorm(1,0,0.05),
-                sd_lam=rnorm(1,0.01,0.005),
+  inits <- list(#beta=rnorm(nbeta,c(0,0.5),0.1),
+                beta=rnorm(nbeta,c(0,0.5),0.1),
+                # beta_lam=rnorm(2,c(-0.05,0.01),0.01),
+                beta_lam=rnorm(nbeta_lam,c(-0.05,-0.01,0.02),0.005),
+                # mu_lam=rnorm(1,0,0.05),
+                # sd_lam=rnorm(1,0.01,0.005),
+                sd_lam=rnorm(1,0.1,0.01),
                 if(abund_scale=="watersheds"){
                   N = matrix(NA,nsites_rem,nperiods)
                 } else {
                   N = matrix(NA,nea,nperiods)
                 },
                 z_site = matrix(1,nsites_occ,nperiods),
-                p_n1 = rnorm(1,0.0001,0.00001),
+                if(abund_scale=="watersheds"){
+                  p_n1 = rnorm(1,0.005,0.0001)
+                } else {
+                  p_n1 = rnorm(1,0.0001,0.0001)
+                },
                 r_n1 = rnorm(1,6,0.1),
                 if(abund_scale!="watersheds"){z_ea = matrix(1,nea,nperiods)},
                 if(abund_scale!="watersheds"){psi_ea = rnorm(nea,0.95,0.01)}
@@ -575,13 +576,13 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   inits <- inits[!sapply(inits,is.null)]
   
   if(abund_scale=="watersheds"){
-    names(inits)[names(inits)==""] <- c("N")
+    names(inits)[names(inits)==""] <- c("N","p_n1")
   } else {
-    names(inits)[names(inits)==""] <- c("N","z_ea","psi_ea")
+    names(inits)[names(inits)==""] <- c("N","p_n1","z_ea","psi_ea")
   }
   
-  inits$N[,1] <- apply(yrem,1,max)*15
-  
+  inits$N[,1] <- apply(yrem,1,max)*20
+
   ## nimble configuration -------------------------------------------------
   mod <- nimbleModel(code = ZIbinomcode,
                      data = modDat,
@@ -594,7 +595,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   # if(is.na(monitors)){
   monitors <- c("lambda",
                 "beta",
-                if(nfsp_reg==F){"beta0"},
+                "beta_lam",
+                "beta0",
                 "alpha",
                 "sd_pdet",
                 "delta_t",
@@ -625,17 +627,21 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  # Cmod$mod$N  
+  # Cmod$mod$N
+  # Cmod$mod$lambda
+  # Cmod$mod$beta_lam0
+  # hist(Cmod$mod$lambda)
+  # Cmod$mod$beta0
   # Cmod$mod$theta_t
   # Cmod$mod$pip_t
   # Cmod$mod$lambda
   # Cmod$mod$calculate("cpue")
   # Cmod$mod$calculate("r_n1")
   # Cmod$mod$calculate("p_n1")
-  
-  niter<-100000
-  burnProp<-0.75
-  thin <-5
+
+  # niter<-100000
+  # burnProp<-0.75
+  # thin <-5
   
   samples <- runMCMC(Cmod$Cmcmc,
                      niter = niter,
@@ -677,6 +683,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
        dat_aerial=dat_aerial,
        develop=develop,
        agri=agri,
+       nfsp_sc=nfsp_sc,
+       nfsp=nfsp,
        site_idx_lookup=site_idx_lookup
   )
 }

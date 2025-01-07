@@ -21,8 +21,8 @@ study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Miss
 study_site_grid <- study_site_grid %>% rename(elim_area_idx=elm_r_d,
                                               Area_Name=Area_Nm)
 
-if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_1000ft_buffer_",abund_scale,".RData"))){
-  load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_1000ft_buffer_",abund_scale,".RData"))
+if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))){
+  load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))
 } else {
   
   ## systematic baiting  ---------------------------
@@ -46,7 +46,7 @@ if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missour
   rem_eff_site <- eff$rem_eff_site
 
   save(nlcd_siteid,sysbait_det_eff,rem_eff_site,
-       file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_1000ft_buffer_",abund_scale,".RData"))
+       file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))
 }
 
 # max(sysbait_det_eff$subper_start)
@@ -60,12 +60,12 @@ source("./Functions/fit_zi_rem_occ_mod_binom_dynamic.R")
 
 ##single chain -----------------
 mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
-                           rem_eff_ea = rem_eff_ea,
+                           rem_eff_site = rem_eff_site,
                            study_site_grid=study_site_grid,
+                           abund_scale=abund_scale,
                            eff_weeks =10,
-                           nfsp_reg=T,
                            monitors = NA,
-                           niter=1000,
+                           niter=100000,
                            thin=5,
                            burnProp=0.8,
                            nChains=1)
@@ -79,7 +79,7 @@ nsites <- mcmc.out$nsites
 nea <- mcmc.out$nea
 nperiods <- mcmc.out$nperiods
 nbeta <- mcmc.out$nbeta
-
+site_idx_lookup <- mcmc.out$site_idx_lookup
 
 # save(samples,dat_occ,dat_rem,nsites,nperiods,nbeta,
 #      file = "./Model outputs/ziBinMod_determ_psi.Rdata")
