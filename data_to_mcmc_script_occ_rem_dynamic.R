@@ -95,7 +95,6 @@ mcmcPar <- function(j){
                          rem_eff_site = rem_eff_site,
                          study_site_grid=study_site_grid,
                          eff_weeks=10,
-                         nfsp_reg=T,
                          abund_scale=abund_scale,
                          monitors=NA, 
                          niter=niter, 
@@ -135,4 +134,5 @@ site_idx_lookup <- parSamples[[1]]$site_idx_lookup
 
 save(samples,dat_occ,nsites_occ,nsites_rem,nperiods,nbeta,agri,develop,
      dat_trap,dat_aerial,mn_te,site_idx_lookup,
-     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",end_fy,"_lag_ws_01NOV24.Rdata"))
+     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",
+                 end_fy,"_lag_ws_13JAN25.Rdata"))

@@ -176,7 +176,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
 
   ##covariates -----------------------------
   nbeta <- 3
-  nbeta_lam <- 2
+  # nbeta_lam <- 2
   
   nlcd_siteid_orig <- nlcd_siteid
   nlcd_siteid$site_idx <- as.numeric(as.factor(nlcd_siteid$SiteID))
@@ -309,9 +309,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
     
     #lambda regression coefficients
-    for(i in 1:nbeta_lam){
-      beta_lam[i] ~ dnorm(0,5)
-    }
+    # for(i in 1:nbeta_lam){
+    #   beta_lam[i] ~ dnorm(0,5)
+    # }
     
     for(t in 1:nperiods){
       beta0[t] ~ dnorm(beta[1],sd=sd_beta0)
@@ -327,7 +327,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_pdet ~ dgamma(10,10)
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
-    sd_lam ~ dgamma(1,20)
+    # sd_lam ~ dgamma(1,20)
+    lambda ~ dnorm(1,0.1)
     
     ",
 
@@ -377,10 +378,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       
       #abundace/removal process
       for(t in 2:nperiods){
-        mu_lam[i,t-1] <- beta_lam[1] + beta_lam[2]*nfsp[i,t-1]
-        log(lambda[i,t-1]) ~ dnorm(mu_lam[i,t-1],sd=sd_lam)
+        # mu_lam[i,t-1] <- beta_lam[1] + beta_lam[2]*nfsp[i,t-1]
+        # log(lambda[i,t-1]) ~ dnorm(mu_lam[i,t-1],sd=sd_lam)
       
-        mu_intens[i,t] <- lambda[i,t-1] * (N[i,t-1] - yrem_mat[i,t-1])
+        mu_intens[i,t] <- lambda * (N[i,t-1] - yrem_mat[i,t-1])
         N[i,t] ~ dpois(mu_intens[i,t])
       }
     }
@@ -494,14 +495,15 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
                  trap_nights_km=dat_occ$trap_nights_km_sc[,1],
-                 yrem_mat=yrem,
-                 nfsp=nfsp_sc)
+                 yrem_mat=yrem
+                 # nfsp=nfsp_sc
+                 )
   
   ### constants -----------------------------
   const <- list(develop=develop$develop_sc,
                 agri=agri$agri_sc,
                 nbeta=nbeta,
-                nbeta_lam=nbeta_lam,
+                # nbeta_lam=nbeta_lam,
                 nperiods=nperiods,
                 nsamp_occ=nrow(dat_occ),
                 nsites_occ=nsites_occ,
@@ -553,11 +555,11 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ### initial values -----------------------------
   inits <- list(#beta=rnorm(nbeta,c(0,0.5),0.1),
                 beta=rnorm(nbeta,c(0,0.5),0.1),
-                # beta_lam=rnorm(2,c(-0.05,0.01),0.01),
-                beta_lam=rnorm(nbeta_lam,c(-0.05,-0.01,0.02),0.005),
+                # beta_lam=rnorm(nbeta_lam,c(-0.05,-0.01,0.02),0.005),
                 # mu_lam=rnorm(1,0,0.05),
                 # sd_lam=rnorm(1,0.01,0.005),
-                sd_lam=rnorm(1,0.1,0.01),
+                lambda=rnorm(1,1,0.05),
+                # sd_lam=rnorm(1,0.1,0.01),
                 if(abund_scale=="watersheds"){
                   N = matrix(NA,nsites_rem,nperiods)
                 } else {
@@ -595,7 +597,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   # if(is.na(monitors)){
   monitors <- c("lambda",
                 "beta",
-                "beta_lam",
+                # "beta_lam",
                 "beta0",
                 "alpha",
                 "sd_pdet",
