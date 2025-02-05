@@ -11,10 +11,12 @@
 # elim_prob=0.95
 # eff_weeks=10
 # abund_scale="watersheds"
+# source("./Functions/avail_fun.R")
 
 fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
                            rem_eff_site, #output of data_functions_ws_occ_ea_rem.R
                            study_site_grid, #output from mapping huc10 to eas.R
+                           oak_siteid,
                            # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
                            abund_scale,#watersheds or ea
@@ -51,20 +53,20 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   
   ## only include sites with consistent removal ----------
   if(abund_scale=="watersheds"){
-    site_rem <- dat_rem %>%
-      group_by(Date,SiteID) %>%
-      summarise(tot_rem=sum(tot_rem)) %>%
-      filter(tot_rem>0) %>%
-      group_by(SiteID) %>%
-      summarise(n=n()) %>%
-      arrange(desc(n))
-
-    rem_cutoff <- quantile(site_rem$n,prob=0.90)
-    site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
-    
-    dat_rem <- dat_rem %>% 
-      filter(SiteID%in%site_rem_cutoff$SiteID) %>%
-      filter(!is.na(SiteID))
+    # site_rem <- dat_rem %>%
+    #   group_by(Date,SiteID) %>%
+    #   summarise(tot_rem=sum(tot_rem)) %>%
+    #   filter(tot_rem>0) %>%
+    #   group_by(SiteID) %>%
+    #   summarise(n=n()) %>%
+    #   arrange(desc(n))
+    # 
+    # rem_cutoff <- quantile(site_rem$n,prob=0.90)
+    # site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
+    # 
+    # dat_rem <- dat_rem %>% 
+    #   filter(SiteID%in%site_rem_cutoff$SiteID) %>%
+    #   filter(!is.na(SiteID))
 
   } else {
     dat_rem <- dat_rem %>% 
@@ -176,7 +178,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
 
   ##covariates -----------------------------
   nbeta <- 3
-  # nbeta_lam <- 2
+  nbeta_lam <- 4
   
   nlcd_siteid_orig <- nlcd_siteid
   nlcd_siteid$site_idx <- as.numeric(as.factor(nlcd_siteid$SiteID))
@@ -250,24 +252,38 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                            elim_idx_orig=unique(dat_rem$elim_area_idx))
   
   ## nfsp covariate ------------------
-  if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")){
-      load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
-    } else {
-      nfsp <- matrix(NA,nsites_occ,nperiods)
-      for(i in 1:nsites_occ){
-        for(t in 1:nperiods){
-          nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs_lag[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
-        }
-      }
-      nfsp_sc <- scale(nfsp)
-      save(nfsp,nfsp_sc,file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
-    }
+  # if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")){
+  #     load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
+  #   } else {
+  #     nfsp <- matrix(NA,nsites_occ,nperiods)
+  #     for(i in 1:nsites_occ){
+  #       for(t in 1:nperiods){
+  #         nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs_lag[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
+  #       }
+  #     }
+  #     nfsp_sc <- scale(nfsp)
+  #     save(nfsp,nfsp_sc,file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
+  #   }
+  # 
+  # if(abund_scale=="watersheds"){
+  #   # nfsp <- nfsp[site_rem_cutoff$SiteID,]
+  #   # nfsp_sc <- scale(nfsp)
+  # }
   
-  if(abund_scale=="watersheds"){
-    nfsp <- nfsp[site_rem_cutoff$SiteID,]
-    nfsp_sc <- scale(nfsp)
-  }
-
+  ## oak cover covariate ---------
+  oak_siteid$prop_oak_sc <- scale(oak_siteid$prop_oak)
+  
+  ## latitude ----------
+  rem_covs <- study_site_grid
+  rem_covs$lat <- st_coordinates(st_centroid(rem_covs))[,2]
+  rem_covs$long <- st_coordinates(st_centroid(rem_covs))[,1]
+  rem_covs$lat_sc <- scale(rem_covs$lat)
+  rem_covs$long_sc <- scale(rem_covs$long)
+  
+  rem_covs <- rem_covs %>% filter(SiteID%in%site_idx_lookup$SiteID)
+  oak_siteid <- oak_siteid %>% filter(SiteID%in%site_idx_lookup$SiteID)
+  rem_covs <- rem_covs %>% left_join(oak_siteid)
+  
   ##removal matrix ------------------
   if(abund_scale=="watersheds"){
     remtot <- dat_rem %>% group_by(site_idx_rem,period_idx) %>%
@@ -309,9 +325,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     }
     
     #lambda regression coefficients
-    # for(i in 1:nbeta_lam){
-    #   beta_lam[i] ~ dnorm(0,5)
-    # }
+    for(i in 1:nbeta_lam){
+      beta_lam[i] ~ dnorm(0,5)
+    }
     
     for(t in 1:nperiods){
       beta0[t] ~ dnorm(beta[1],sd=sd_beta0)
@@ -327,8 +343,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     sd_pdet ~ dgamma(10,10)
     sd_theta_t ~ dgamma(10,10)
     sd_theta_a ~ dgamma(10,10)
-    # sd_lam ~ dgamma(1,20)
-    lambda ~ dnorm(1,0.1)
+    sd_lam ~ dgamma(1,20)
+    # lambda ~ dnorm(1,0.1)
     
     ",
 
@@ -377,11 +393,13 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       }
       
       #abundace/removal process
-      for(t in 2:nperiods){
-        # mu_lam[i,t-1] <- beta_lam[1] + beta_lam[2]*nfsp[i,t-1]
-        # log(lambda[i,t-1]) ~ dnorm(mu_lam[i,t-1],sd=sd_lam)
+      mu_lam[i] <- beta_lam[1] + beta_lam[2]*oak[i] + 
+        beta_lam[3]*y[i] + beta_lam[4]*x[i]
+      log(lambda[i]) ~ dnorm(mu_lam[i],sd=sd_lam)
       
-        mu_intens[i,t] <- lambda * (N[i,t-1] - yrem_mat[i,t-1])
+      for(t in 2:nperiods){
+      
+        mu_intens[i,t] <- lambda[i] * (N[i,t-1] - yrem_mat[i,t-1])
         N[i,t] ~ dpois(mu_intens[i,t])
       }
     }
@@ -495,7 +513,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                  yocc=dat_occ$detections,
                  nweeks=dat_occ$nweeks,
                  trap_nights_km=dat_occ$trap_nights_km_sc[,1],
-                 yrem_mat=yrem
+                 yrem_mat=yrem,
+                 oak=rem_covs$prop_oak_sc[,1],
+                 y=rem_covs$lat_sc[,1],
+                 x=rem_covs$long_sc[,1]
                  # nfsp=nfsp_sc
                  )
   
@@ -503,7 +524,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   const <- list(develop=develop$develop_sc,
                 agri=agri$agri_sc,
                 nbeta=nbeta,
-                # nbeta_lam=nbeta_lam,
+                nbeta_lam=nbeta_lam,
                 nperiods=nperiods,
                 nsamp_occ=nrow(dat_occ),
                 nsites_occ=nsites_occ,
@@ -555,10 +576,10 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   ### initial values -----------------------------
   inits <- list(#beta=rnorm(nbeta,c(0,0.5),0.1),
                 beta=rnorm(nbeta,c(0,0.5),0.1),
-                # beta_lam=rnorm(nbeta_lam,c(-0.05,-0.01,0.02),0.005),
+                beta_lam=rnorm(nbeta_lam,c(-0.05,0.01,-0.02,0),0.005),
                 # mu_lam=rnorm(1,0,0.05),
                 # sd_lam=rnorm(1,0.01,0.005),
-                lambda=rnorm(1,1,0.05),
+                # lambda=rnorm(1,1,0.05),
                 # sd_lam=rnorm(1,0.1,0.01),
                 if(abund_scale=="watersheds"){
                   N = matrix(NA,nsites_rem,nperiods)
@@ -597,12 +618,14 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   # if(is.na(monitors)){
   monitors <- c("lambda",
                 "beta",
-                # "beta_lam",
+                "beta_lam",
                 "beta0",
                 "alpha",
                 "sd_pdet",
                 "delta_t",
                 "delta_a",
+                "sd_theta_t",
+                "sd_theta_a",
                 "N",
                 "pabs",
                 "pelim",
@@ -685,8 +708,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
        dat_aerial=dat_aerial,
        develop=develop,
        agri=agri,
-       nfsp_sc=nfsp_sc,
-       nfsp=nfsp,
+       rem_covs=rem_covs,
+       # nfsp_sc=nfsp_sc,
+       # nfsp=nfsp,
        site_idx_lookup=site_idx_lookup
   )
 }
