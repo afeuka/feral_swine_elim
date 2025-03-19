@@ -11,12 +11,16 @@
 # elim_prob=0.95
 # eff_weeks=10
 # abund_scale="watersheds"
-# source("./Functions/avail_fun.R")
+# dat_occ = sysbait_det_eff
+# dat_rem = rem_eff_site
 
-fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
-                           rem_eff_site, #output of data_functions_ws_occ_ea_rem.R
+
+fit_zi_rem_occ <- function(dat_occ,#sysbait_det_eff, #output of data_functions_ws_occ_ea_rem.R
+                           dat_rem, #rem_eff_site, #output of data_functions_ws_occ_ea_rem.R
                            study_site_grid, #output from mapping huc10 to eas.R
                            oak_siteid,
+                           nlcd_siteid,
+                           nfsp_siteid,
                            # elim_prob=0.95,#threshold for probability of elimination
                            eff_weeks=10,#number of trap nights to determine eliminiation probability
                            abund_scale,#watersheds or ea
@@ -31,28 +35,18 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   require(tidyverse)
   require(sf)
   
+  source("./Functions/avail_fun.R")
+  
   # data setup -------------------------------------------------
-  elim_areas <- study_site_grid %>% 
-    group_by(Area_Name) %>% 
-    summarise(geometry=st_union(geometry)) %>% 
-    mutate(area_m=st_area(.),
-           area_km=area_m/1e6,
-           elim_area_idx=as.numeric(Area_Name)+1)
-  
-  sysbait_det_eff$Area_Name[is.na(sysbait_det_eff$Area_Name)] <- 0
-  
   ##filter effort outliers ------------
-  dat_rem <- rem_eff_site
-  dat_rem$Area_Name[is.na(dat_rem$Area_Name)]<- 0
-  
   eff_cutoff <- quantile(dat_rem$effect_area_hrs,prob=0.95)
-  dat_rem <- dat_rem %>% filter(effect_area_hrs<eff_cutoff)
   dat_rem <- dat_rem %>% 
-    group_by(period,method,SiteID) %>% 
-    mutate(pass_idx=1:n())
+    filter(effect_area_hrs<eff_cutoff) %>% 
+    rename(period_idx = period,
+           method=Method) 
   
   ## only include sites with consistent removal ----------
-  if(abund_scale=="watersheds"){
+  # if(abund_scale=="watersheds"){
     # site_rem <- dat_rem %>%
     #   group_by(Date,SiteID) %>%
     #   summarise(tot_rem=sum(tot_rem)) %>%
@@ -67,96 +61,97 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     # dat_rem <- dat_rem %>% 
     #   filter(SiteID%in%site_rem_cutoff$SiteID) %>%
     #   filter(!is.na(SiteID))
-
-  } else {
-    dat_rem <- dat_rem %>% 
-      filter(Area_Name%in%c("4","6"))
-  }
-
-  dat_rem$elim_area_idx <- as.numeric(dat_rem$Area_Name)+1
-  dat_rem <- dat_rem %>% rename(period_idx = period) 
+  # } else {
+  #   dat_rem <- dat_rem %>% 
+  #     filter(Area_Name%in%c("4","6"))
+  # }
   
   # dat_rem %>% group_by(SiteID,period_idx,method,pass_idx) %>% 
   #   summarise(n=n()) %>% 
   #   filter(n>1) 
   
-  ##add 0 data for later periods -aerial (ends in march) -------------
-  a_pers <- dat_rem %>% ungroup() %>%
-    filter(method=="Aerial") %>%
-    select(period_idx) %>% distinct
-  a_pers_n <- which(!(1:max(dat_rem$period_idx)%in%a_pers$period_idx)) #no aerial ops during these periods
+  ##add 0 aerial data for later periods (only occurs sesaonally) -------------
+  last_per_meth <- dat_rem %>% 
+    filter(period_idx==max(dat_rem$period_idx)) %>% 
+    ungroup() %>% 
+    reframe(method=unique(method))
   
-  if(abund_scale=="watersheds"){
-    dat_rem$site_idx_rem <- as.numeric(as.factor(dat_rem$SiteID))
-    dat_rem$site_idx_occ <- as.numeric(dat_rem$SiteID)
+  if(!"Aerial"%in%last_per_meth$method){
+    a_pers <- dat_rem %>% ungroup() %>%
+      filter(method=="Aerial") %>%
+      select(period_idx) %>% distinct
+    a_pers_n <- which(!(1:max(dat_rem$period_idx)%in%a_pers$period_idx)) #no aerial ops during these periods
     
-    sids <- sort(unique(dat_rem$site_idx_rem))
-    
-    samp <- dat_rem[1:(length(a_pers_n)*length(sids)),] #use existing data frame structure and clear fields
-    samp$method <- "Aerial"
-    samp$period_idx <- rep(a_pers_n,length(sids))
-    samp$site_idx_rem <- sort(rep(unique(sids),length(a_pers_n)))
-    samp$Area_Name <-samp$Date <- samp$Date <- samp$SiteID <- NA
-    samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
-      samp$prop_ea_impact <- samp$effect_area_km <- 0
-    samp$pass_idx <- 1
-    dat_rem <- rbind(dat_rem,samp)
-    
-  } else {
-    eids <- sort(unique(dat_rem$elim_area_idx))
-    
-    samp <- dat_rem[1:(length(a_pers_n)*length(eids)),]
-    samp$method <- "Aerial"
-    samp$period_idx <- rep(a_pers_n,length(eids))
-    samp$elim_area_idx <- sort(rep(unique(eids),length(a_pers_n)))
-    samp$Area_Name <-samp$Date <- NA
-    samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
-      samp$prop_ea_impact <- samp$effect_area_km <- 0
-    samp$pass_idx <- 1
-    dat_rem <- rbind(dat_rem,samp)
+    if(abund_scale=="watersheds"){
+      dat_rem$site_idx_rem <- as.numeric(as.factor(dat_rem$SiteID))
+      dat_rem$site_idx_occ <- as.numeric(dat_rem$SiteID)
+      
+      sids <- sort(unique(dat_rem$site_idx_rem))
+      
+      samp <- dat_rem[1:(length(a_pers_n)*length(sids)),] #use existing data frame structure and clear fields
+      samp$method <- "Aerial"
+      samp$period_idx <- rep(a_pers_n,length(sids))
+      samp$site_idx_rem <- sort(rep(unique(sids),length(a_pers_n)))
+      samp$Area_Name <-samp$Date <- samp$Date <- samp$SiteID <- NA
+      samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
+        samp$prop_ea_impact <- samp$effect_area_km <- 0
+      samp$pass_idx <- 1
+      dat_rem <- rbind(dat_rem,samp)
+      
+    } else {
+      # eids <- sort(unique(dat_rem$elim_area_idx))
+      # 
+      # samp <- dat_rem[1:(length(a_pers_n)*length(eids)),]
+      # samp$method <- "Aerial"
+      # samp$period_idx <- rep(a_pers_n,length(eids))
+      # samp$elim_area_idx <- sort(rep(unique(eids),length(a_pers_n)))
+      # samp$Area_Name <-samp$Date <- NA
+      # samp$tot_rem <- samp$tot_hrs <- samp$effect_area_hrs <-
+      #   samp$prop_ea_impact <- samp$effect_area_km <- 0
+      # samp$pass_idx <- 1
+      # dat_rem <- rbind(dat_rem,samp)
+    }
   }
 
   ##occupancy data-----------------------
   if(abund_scale=="watersheds"){
-    sysbait_det_eff$site_idx_occ <- as.numeric(sysbait_det_eff$site_idx)
+    dat_occ$site_idx_occ <- as.numeric(dat_occ$site_idx)
     
-    dat_occ <- sysbait_det_eff %>% 
+    dat_occ <- dat_occ %>% 
+      rename(period_idx=period) %>% 
       left_join(study_site_grid %>% 
                   st_drop_geometry()) %>% 
-      group_by(period,site_idx_occ) %>% 
+      group_by(period_idx,site_idx_occ) %>% 
       summarise(detections=sum(detection),
                 nweeks = length(unique(subper_start)),
                 per_start=min(subper_start),
                 trap_nights_km = sum(trap_nights_km),
-                elim_area = max(as.numeric(Area_Name)),
-                elim_area_idx = max(elim_area_idx)
+                elim_area = max(as.numeric(Area_Name))
       ) %>% 
-      rename(period_idx=period) %>% 
       arrange(period_idx,site_idx_occ)
   } else {
-    dat_occ <- sysbait_det_eff %>% 
-      left_join(study_site_grid %>% 
-                  mutate(site_idx=as.character(SiteID)) %>% 
-                  st_drop_geometry() %>% 
-                  dplyr::select(-c(SiteID))) %>% 
-      group_by(period,site_idx) %>% 
-      mutate(site_idx = as.numeric(site_idx)) %>% 
-      summarise(detections=sum(detection),
-                nweeks = length(unique(subper_start)),
-                per_start=min(subper_start),
-                trap_nights_km = sum(trap_nights_km),
-                elim_area = max(as.numeric(Area_Name)),
-                elim_area_idx = max(elim_area_idx)
-      ) %>% 
-      rename(period_idx=period) %>% 
-      arrange(period_idx,site_idx)
+    # dat_occ <- dat_occ %>% 
+    #   left_join(study_site_grid %>% 
+    #               mutate(site_idx=as.character(SiteID)) %>% 
+    #               st_drop_geometry() %>% 
+    #               dplyr::select(-c(SiteID))) %>% 
+    #   group_by(period,site_idx) %>% 
+    #   mutate(site_idx = as.numeric(site_idx)) %>% 
+    #   summarise(detections=sum(detection),
+    #             nweeks = length(unique(subper_start)),
+    #             per_start=min(subper_start),
+    #             trap_nights_km = sum(trap_nights_km),
+    #             elim_area = max(as.numeric(Area_Name)),
+    #             elim_area_idx = max(elim_area_idx)
+    #   ) %>% 
+    #   arrange(period_idx,site_idx)
+    # 
+    # elim_site_idx <- dat_occ %>% group_by(site_idx_occ) %>%
+    #   summarise(elim_area_idx=as.numeric(unique(elim_area_idx))) %>%
+    #   arrange(site_idx_occ)
   }
 
   dat_occ$trap_nights_km_sc <- scale(dat_occ$trap_nights_km)
-  
-  elim_site_idx <- dat_occ %>% group_by(site_idx_occ) %>%
-    summarise(elim_area_idx=as.numeric(unique(elim_area_idx))) %>%
-    arrange(site_idx_occ)
   
   site_idx_lookup <- dat_rem %>% 
     ungroup() %>% 
@@ -172,9 +167,9 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
     })
 
   # #check no duplicated values from adding dummy data
-  # dat_rem %>% group_by(site_idx_rem,period_idx,method,pass_idx) %>% 
-  #   summarise(n=n()) %>% 
-  #   filter(n>1)
+  dat_rem %>% group_by(site_idx_rem,period_idx,method,pass_idx) %>%
+    summarise(n=n()) %>%
+    filter(n>1)
 
   ##covariates -----------------------------
   nbeta <- 3
@@ -222,48 +217,48 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       }
     }
   } else {
-    gamma_a <- array(0,dim=c(max(dat_aerial$pass_idx),nea,nperiods))
-    gamma_t <- array(0,dim=c(max(dat_trap$pass_idx),nea,nperiods))
-    for(i in 1:nea){
-      for(t in 1:nperiods){
-        for(j in 1:max(dat_aerial$pass_idx,dat_trap$pass_idx)){
-          x <- dat_aerial$prop_ea_impact[dat_aerial$pass_idx==j &
-                                           dat_aerial$elim_area_idx==i &
-                                           dat_aerial$period_idx==t]
-          z <- dat_trap$prop_ea_impact[dat_trap$pass_idx==j &
-                                         dat_trap$elim_area_idx==i &
-                                         dat_trap$period_idx==t]
-          if(length(x)>0){
-            gamma_a[j,i,t] <- max(x) 
-          }
-          if(length(z)>0){
-            gamma_t[j,i,t] <- max(z)
-          }
-        }
-      }
-    }
+    # gamma_a <- array(0,dim=c(max(dat_aerial$pass_idx),nea,nperiods))
+    # gamma_t <- array(0,dim=c(max(dat_trap$pass_idx),nea,nperiods))
+    # for(i in 1:nea){
+    #   for(t in 1:nperiods){
+    #     for(j in 1:max(dat_aerial$pass_idx,dat_trap$pass_idx)){
+    #       x <- dat_aerial$prop_ea_impact[dat_aerial$pass_idx==j &
+    #                                        dat_aerial$elim_area_idx==i &
+    #                                        dat_aerial$period_idx==t]
+    #       z <- dat_trap$prop_ea_impact[dat_trap$pass_idx==j &
+    #                                      dat_trap$elim_area_idx==i &
+    #                                      dat_trap$period_idx==t]
+    #       if(length(x)>0){
+    #         gamma_a[j,i,t] <- max(x) 
+    #       }
+    #       if(length(z)>0){
+    #         gamma_t[j,i,t] <- max(z)
+    #       }
+    #     }
+    #   }
+    # }
   }
 
   dat_aerial$effect_area_hrs_sc <- scale(dat_aerial$effect_area_hrs)
   dat_trap$effect_area_hrs_sc <- scale(dat_trap$effect_area_hrs)
   
-  nea_rem <- length(unique(dat_rem$elim_area_idx))
-  ea_rem_idx <- data.frame(elim_idx_rem=1:nea_rem,
-                           elim_idx_orig=unique(dat_rem$elim_area_idx))
+  # nea_rem <- length(unique(dat_rem$elim_area_idx))
+  # ea_rem_idx <- data.frame(elim_idx_rem=1:nea_rem,
+  #                          elim_idx_orig=unique(dat_rem$elim_area_idx))
   
   ## nfsp covariate ------------------
-  # if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")){
-  #     load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
-  #   } else {
-  #     nfsp <- matrix(NA,nsites_occ,nperiods)
-  #     for(i in 1:nsites_occ){
-  #       for(t in 1:nperiods){
-  #         nfsp[i,t] <- unique(sysbait_det_eff$prp_nfs_lag[as.numeric(sysbait_det_eff$site_idx)==i & sysbait_det_eff$period==t])
-  #       }
-  #     }
-  #     nfsp_sc <- scale(nfsp)
-  #     save(nfsp,nfsp_sc,file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Model Ready Data/NFSP Watershed Overlap/nfsp_lag_2020_2024.RData")
+  # per_yrs <- dat_occ %>% 
+  #   group_by(period_idx) %>% 
+  #   summarise(year = year(min(subper_start)))
+  # 
+  # nfsp <- matrix(NA,nsites_occ,nperiods)
+  # for(i in 1:nsites_occ){
+  #   for(t in 1:nperiods){
+  #     nfsp[i,t] <- nfsp_siteid$prp_nfs_lag[nfsp_siteid$SiteID==i & 
+  #                                            nfsp_siteid$year==per_yrs$year[t]]
   #   }
+  # }
+  # nfsp_sc <- scale(nfsp)
   # 
   # if(abund_scale=="watersheds"){
   #   # nfsp <- nfsp[site_rem_cutoff$SiteID,]
@@ -298,17 +293,17 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
           yrem[j,t] <- x
         }}}
   } else{
-    remtot <- dat_rem %>% group_by(elim_area_idx,period_idx) %>%
-      reframe(removal=sum(tot_rem))
-    
-    yrem <- matrix(0,nea,nperiods)
-    ea_idx <- sort(unique(dat_occ$elim_area_idx))
-    for(j in 1:nea){
-      for(t in 1:nperiods){
-        x <- remtot$removal[remtot$elim_area_idx==ea_idx[j] & remtot$period_idx==t]
-        if(length(x)>0){
-          yrem[j,t] <- x
-        }}}
+    # remtot <- dat_rem %>% group_by(elim_area_idx,period_idx) %>%
+    #   reframe(removal=sum(tot_rem))
+    # 
+    # yrem <- matrix(0,nea,nperiods)
+    # ea_idx <- sort(unique(dat_occ$elim_area_idx))
+    # for(j in 1:nea){
+    #   for(t in 1:nperiods){
+    #     x <- remtot$removal[remtot$elim_area_idx==ea_idx[j] & remtot$period_idx==t]
+    #     if(length(x)>0){
+    #       yrem[j,t] <- x
+    #     }}}
   }
 
   #mean trapping effort  -------------------------------
@@ -393,7 +388,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
       }
       
       #abundace/removal process
-      mu_lam[i] <- beta_lam[1] + beta_lam[2]*oak[i] + 
+      mu_lam[i]<- beta_lam[1] + beta_lam[2]*oak[i] + 
         beta_lam[3]*y[i] + beta_lam[4]*x[i]
       log(lambda[i]) ~ dnorm(mu_lam[i],sd=sd_lam)
       
@@ -519,7 +514,6 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                  x=rem_covs$long_sc[,1]
                  # nfsp=nfsp_sc
                  )
-  
   ### constants -----------------------------
   const <- list(develop=develop$develop_sc,
                 agri=agri$agri_sc,
@@ -565,6 +559,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 # num=ssg_adj$num,
                 # L=length(ssg_adj$adj)
   )
+  
   const <- const[!sapply(const,is.null)]
   
   if(abund_scale=="watersheds"){
@@ -578,9 +573,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 beta=rnorm(nbeta,c(0,0.5),0.1),
                 beta_lam=rnorm(nbeta_lam,c(-0.05,0.01,-0.02,0),0.005),
                 # mu_lam=rnorm(1,0,0.05),
-                # sd_lam=rnorm(1,0.01,0.005),
+                sd_lam=rnorm(1,0.005,0.0001),
                 # lambda=rnorm(1,1,0.05),
-                # sd_lam=rnorm(1,0.1,0.01),
                 if(abund_scale=="watersheds"){
                   N = matrix(NA,nsites_rem,nperiods)
                 } else {
@@ -619,6 +613,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
   monitors <- c("lambda",
                 "beta",
                 "beta_lam",
+                "sd_lam",
                 "beta0",
                 "alpha",
                 "sd_pdet",
@@ -628,7 +623,7 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                 "sd_theta_a",
                 "N",
                 "pabs",
-                "pelim",
+                # "pelim",
                 "pocc",
                 "p_n1",
                 "r_n1",
@@ -652,6 +647,8 @@ fit_zi_rem_occ <- function(sysbait_det_eff, #output of data_functions_ws_occ_ea_
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
+  #TODO troubleshoot why theta_t/a are NA
+  
   # Cmod$mod$N
   # Cmod$mod$lambda
   # Cmod$mod$beta_lam0
