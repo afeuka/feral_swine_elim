@@ -587,6 +587,8 @@ fit_zi_rem_occ <- function(dat_occ,#sysbait_det_eff, #output of data_functions_w
                   p_n1 = rnorm(1,0.0001,0.0001)
                 },
                 r_n1 = rnorm(1,6,0.1),
+                theta_a = array(0,dim=dim(gamma_a)),
+                theta_t = array(0,dim=dim(gamma_t)),
                 if(abund_scale!="watersheds"){z_ea = matrix(1,nea,nperiods)},
                 if(abund_scale!="watersheds"){psi_ea = rnorm(nea,0.95,0.01)}
   )
@@ -647,8 +649,6 @@ fit_zi_rem_occ <- function(dat_occ,#sysbait_det_eff, #output of data_functions_w
                       nburn = 0,
                       # setSeed = 1:nChains,
                       nchains = nChains)
-  #TODO troubleshoot why theta_t/a are NA
-  
   # Cmod$mod$N
   # Cmod$mod$lambda
   # Cmod$mod$beta_lam0
