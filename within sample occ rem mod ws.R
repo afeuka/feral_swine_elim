@@ -8,11 +8,11 @@ library(tidyverse)
 library(pROC)
 library(nimble)
 
-# end_fy <- "24"
+end_fy <- "24"
 
 #load samples -----------
 # load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",end_fy,"_09OCT24.Rdata"))
-load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",end_fy,"_13JAN25.Rdata"))
+load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",end_fy,"_lag_ws_17JAN25.Rdata"))
 
 ##load data --------------------------------
 # load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_buffer.RData"))
@@ -275,7 +275,7 @@ save(auc_prev_bin,auc_prev_pocc,auc_occ,
      pVal_ll,pVal_occ,pVal_rem,
      # pVal_occ_mse,pVal_rem_mse,
      pVal_rem_mn,pVal_occ_mn,pVal_rem_var,pVal_occ_var,
-     file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_13JAN25.Rdata"))
+     file = paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_17JAN25.Rdata"))
 
 # load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model validation/Within sample/Plots/",subfolder,"/modval_wi_occ_rem_04SEP24.Rdata"))
 

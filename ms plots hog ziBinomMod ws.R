@@ -20,14 +20,17 @@ elim_areas <- study_site_grid %>%
   summarise(geometry=st_union(geometry))
 
 # load samples ---------------------
-load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_24_lag_ws_13JAN25.Rdata")
+load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_24_lag_ws_27JAN25.Rdata")
+# load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_24_lag_ws_oak_lat_long_05FEB25.Rdata")
 
-subfolder<- "Single Lambda"
+# subfolder<- "Single Lambda
+subfolder <- "Covs Lambda"
 
 ## removal data -----------
 dat_rem <- rbind.data.frame(dat_aerial,dat_trap)
 dat_rem_sum <- dat_rem %>% 
-  group_by(SiteID,method,month=floor_date(Date,"month")) %>% 
+  # group_by(SiteID,method,month=floor_date(Date,"month")) %>% 
+  group_by(SiteID,method,month=floor_date(subper_start,"month")) %>% 
   summarise(Season=min(Date),
             removal=sum(tot_rem),
             tot_hrs=sum(tot_hrs),
@@ -41,7 +44,8 @@ nChains <- length(samples)
 #trace plots -------------------------------
 ##beta coefficients----------------------
 beta<- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
-  cbind.data.frame(samples[[i]][,grep("beta",colnames(samples[[i]]))],
+  cbind.data.frame(samples[[i]][,grepl("beta",colnames(samples[[i]])) &
+                     !grepl("beta_lam",colnames(samples[[i]]))],
                    chain=i)})),
   samp=rep(1:nmcmc,nChains))
 
@@ -61,6 +65,36 @@ g_b
 ggsave(g_b, 
        filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/beta_trace.jpeg"),
        width=7,height=5,units="in",device="jpeg")
+
+##beta lam coefficients----------------------
+beta_lam <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][,grepl("beta_lam",colnames(samples[[i]]))],
+                   chain=i)})),
+  samp=rep(1:nmcmc,nChains))
+
+beta_lam_names <- c("Intercept","Oak Proportion","Latitiude","Longitude")
+
+colnames(beta_lam)[1:length(beta_lam_names)] <- beta_lam_names
+
+beta_lam_long <- beta_lam %>% 
+  pivot_longer(cols=all_of(1:length(beta_lam_names)),
+               names_to="beta_lam",values_to="value") %>% 
+  mutate(chain=factor(chain))
+
+g_bl<- ggplot(beta_lam_long) + geom_line(aes(x=samp,y=value,col=chain))+
+  geom_hline(yintercept=0,col="black",lty=2)+
+  facet_wrap(.~beta_lam)
+g_bl
+
+ggsave(g_bl, 
+       filename = paste0("./Model outputs/Plots/",subfolder,"/Trace/beta_lam_trace.jpeg"),
+       width=7,height=5,units="in",device="jpeg")
+
+#sd lambda ----------------
+sd_lam <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+  cbind.data.frame(samples[[i]][,grepl("sd_lam",colnames(samples[[i]]))],
+                   chain=i)})),
+  samp=rep(1:nmcmc,nChains))
 
 #occupancy regression---------------------
 beta_sum <- beta_long %>% 
@@ -145,12 +179,18 @@ lambda <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
   cbind.data.frame(samples[[i]][,grep("lambda",colnames(samples[[i]]))],
                    chain=i)})),
   samp=rep(1:nmcmc,nChains))
-colnames(lambda)[1] <- "value"
-lambda_long<-lambda
+colnames(lambda)[1:nsites_rem] <- 1:nsites_rem
+lambda_long <- lambda %>% pivot_longer(cols=as.character(1:nsites_rem),
+                                       names_to='site_idx_rem',
+                                       values_to="value") %>% 
+  mutate(site_idx_rem=as.numeric(site_idx_rem))
+# colnames(lambda)[1] <- "value"
+# lambda_long<-lambda
 
 g_l <- ggplot(lambda_long) + 
   geom_line(aes(x=samp,y=value,col=factor(chain)))+
-  geom_hline(yintercept=1,col="black",lty=2)
+  geom_hline(yintercept=1,col="black",lty=2)+
+  facet_wrap(.~site_idx_rem)
 g_l
 
 ggsave(g_l,
@@ -158,11 +198,17 @@ ggsave(g_l,
        width=7,height=5,units="in",device="jpeg")
 
 #population growth rate--------------
-lam_sum <- data.frame(mn=mean(lambda[,1]),
-                      lci=quantile(lambda[,1],probs=c(0.025)),
-                      uci=quantile(lambda[,1],probs=c(0.975)))
+# lam_sum <- data.frame(mn=mean(lambda[,1]),
+#                       md=median(lambda[,1]),
+#                       lci=quantile(lambda[,1],probs=c(0.025)),
+#                       uci=quantile(lambda[,1],probs=c(0.975)))
+lam_sum <-lambda_long %>% group_by(site_idx_rem) %>% 
+  summarise(mn=mean(value),
+            md=median(value),
+            lci=quantile(value,0.025),
+            uci=quantile(value,0.975))
 
-rm(g_l,g_b,g_a,g_t,g_n1,g_r,g_p)
+rm(g_l,g_b,g_bl,g_a,g_t,g_n1,g_r,g_p)
 
 #absence probability --------------------
 ## map to study site -------------------
@@ -279,7 +325,7 @@ tot_area_km <- as.numeric(study_site_grid %>% st_union() %>% st_area()/1e6)
 
 pabs_thresh_ext <- pabs_long %>% 
   group_by(above_thresh,period_idx,samp_idx) %>% 
-  summarise(area_above_thresh=sum(area_km)) %>% 
+  summarise(area_above_thresh=sum(area_km,na.rm = T)) %>% 
   filter(above_thresh==1) %>% 
   group_by(period_idx) %>% 
   summarise(mn=mean(area_above_thresh),
@@ -325,7 +371,7 @@ ggsave(filename=paste0("./Model outputs/Plots/",subfolder,"/prop_eliminated_",el
 pabs_thresh_ext_samp <- pabs_long %>% 
   group_by(above_thresh,Area_Name,period_idx,samp_idx) %>% 
   summarise(over_thresh=sum(value>elim_thresh)/nsites,
-            area_above_thresh=sum(area_km)) %>% 
+            area_above_thresh=sum(area_km,na.rm=T)) %>% 
   filter(above_thresh==1) %>%
   left_join(elim_areas %>% 
               summarise(ea_area_km=as.numeric(st_area(geometry)/1e6)) %>% 
@@ -338,8 +384,8 @@ max_per <- pabs_thresh_ext_samp %>%
 pabs_thresh_ext_ea <- pabs_thresh_ext_samp %>% 
   group_by(period_idx,Area_Name) %>% 
   summarise(ea_area_km=unique(ea_area_km),
-            mn=mean(area_above_thresh),
-            md=median(area_above_thresh),
+            mn=mean(area_above_thresh,na.rm=T),
+            md=median(area_above_thresh,na.rm=T),
             lci=quantile(area_above_thresh,0.025),
             uci=quantile(area_above_thresh,0.975),
             mn_prop=mn/ea_area_km,
@@ -415,12 +461,12 @@ pabs_thresh_yr <- pabs_long %>%
             above_thresh=ifelse(yr_mn>elim_thresh,1,0)) %>% 
   filter(above_thresh==1) %>% 
   group_by(fy,samp_idx) %>% 
-  summarise(area_above_thresh=sum(area_km)) %>% 
+  summarise(area_above_thresh=sum(area_km,na.rm=T)) %>% 
   group_by(fy) %>% 
-  summarise(mn=mean(area_above_thresh),
-            md=median(area_above_thresh),
-            lci=quantile(area_above_thresh,0.025),
-            uci=quantile(area_above_thresh,0.975),
+  summarise(mn=mean(area_above_thresh,na.rm=T),
+            md=median(area_above_thresh,na.rm=T),
+            lci=quantile(area_above_thresh,0.025,na.rm=T),
+            uci=quantile(area_above_thresh,0.975,na.rm=T),
             mn_prop=mn/tot_area_km,
             md_prop=md/tot_area_km,
             lci_prop=lci/tot_area_km,
@@ -431,7 +477,7 @@ write.csv(pabs_thresh_yr,paste0("./Model outputs/Plots/",subfolder,"/area_above_
 ### by year and ea ------------------
 pabs_thresh_yr_ea_samp <- pabs_long %>% 
   group_by(site_idx,Area_Name,fy,samp_idx) %>% 
-  summarise(yr_mn=mean(value),
+  summarise(yr_mn=mean(value,na.rm=T),
             area_km=unique(area_km),
             above_thresh=ifelse(yr_mn>elim_thresh,1,0)) %>% 
   filter(above_thresh==1) %>% 
@@ -441,13 +487,13 @@ pabs_thresh_yr_ea_samp <- pabs_long %>%
 
 pabs_thresh_yr_ea <- pabs_thresh_yr_ea_samp %>% 
   group_by(fy,Area_Name,samp_idx) %>% 
-  summarise(area_above_thresh=sum(area_km),
+  summarise(area_above_thresh=sum(area_km,na.rm=T),
             ea_area_km=unique(ea_area_km)) %>% 
   group_by(fy,Area_Name,ea_area_km) %>% 
-  summarise(mn=mean(area_above_thresh),
-            md=median(area_above_thresh),
-            lci=quantile(area_above_thresh,0.025),
-            uci=quantile(area_above_thresh,0.975)) %>% 
+  summarise(mn=mean(area_above_thresh,na.rm=T),
+            md=median(area_above_thresh,na.rm=T),
+            lci=quantile(area_above_thresh,0.025,na.rm=T),
+            uci=quantile(area_above_thresh,0.975,na.rm=T)) %>% 
   mutate(mn_prop=mn/ea_area_km,
          md_prop=md/ea_area_km,
          lci_prop=lci/ea_area_km,
@@ -460,6 +506,9 @@ pabs_thresh_yr_ea_prop <- pabs_thresh_yr_ea %>%
   pivot_wider(names_from=Area_Name,values_from=value) %>%
   filter(grepl("prop",stat))
 
+
+pabs_thresh_yr_ea_prop[is.na(pabs_thresh_yr_ea_prop)] <- 0
+
 write.csv(pabs_thresh_yr_ea_prop,paste0("./Model outputs/Plots/",subfolder,"/area_above_,",elim_thresh,"_ea_prop_table.csv"))
 
 pabs_thresh_yr_ea_km <- pabs_thresh_yr_ea %>% 
@@ -468,6 +517,8 @@ pabs_thresh_yr_ea_km <- pabs_thresh_yr_ea %>%
                names_to="stat",values_to="value") %>%
   pivot_wider(names_from=Area_Name,values_from=value) %>%
   filter(!grepl("prop",stat))
+
+pabs_thresh_yr_ea_km[is.na(pabs_thresh_yr_ea_km)] <- 0
 
 write.csv(pabs_thresh_yr_ea_km,paste0("./Model outputs/Plots/",subfolder,"/area_above_,",elim_thresh,"_ea_km_table.csv"))
 
@@ -523,95 +574,95 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/occ_det_eff_curve.jp
 
 #conditional absence probability maps --------------------
 ## map to study site -------------------
-pelim <- do.call("rbind",lapply(1:nChains,function(i){samples[[i]][grep("pelim",colnames(samples[[i]]))]}))
-
-pelim_sum <- data.frame(idx=colnames(pelim),
-                       mn=colMeans(pelim),
-                       md=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.5)),
-                       lci=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.025)),
-                       uci=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.975)))
-
-pelim_sum$site_idx <- sapply(1:nrow(pelim_sum),function(x){
-  as.numeric(gsub("\\[","",gsub("pelim","",unlist(str_split(pelim_sum[x,"idx"],","))[1])))})
-
-pelim_sum$period_idx <- sapply(1:nrow(pelim_sum),function(x){
-  as.numeric(gsub("\\]","",unlist(str_split((pelim_sum[x,"idx"]),","))[2]))})
-
-pelim_sum$per_start <- sapply(1:nrow(pelim_sum),function(i){
-  min(dat_occ$per_start[dat_occ$period_idx==pelim_sum$period_idx[i]])})
-pelim_sum$per_start <- as.Date(pelim_sum$per_start,origin='1970-01-01')
-pelim_sum$year <- year(pelim_sum$per_start)
-pelim_sum$fy <- pelim_sum$year
-pelim_sum$fy[month(pelim_sum$per_start)%in%c(10:12)] <- 
-  pelim_sum$fy[month(pelim_sum$per_start)%in%c(10:12)] +1
-
-pelim_sum_sf <- pelim_sum %>% 
-  left_join(study_site_grid %>% rename(site_idx=SiteID)) %>% 
-  st_as_sf()
-
-pelim_sum <- pelim_sum %>% 
-  left_join(study_site_grid %>% 
-              st_drop_geometry() %>% 
-              rename(site_idx=SiteID) %>% 
-              select(site_idx,Area_Name))
-pabs_ea_sum <- pelim_sum %>% 
-  group_by(Area_Name,per_start) %>% 
-  summarise(ea_md=median(md))
-
-## fiscal year summary ------------------
-###individiual plots -------------------
-pelim_sum_fy <- pelim_sum %>% group_by(fy,site_idx) %>% 
-  summarise(fy_mn = mean(mn),
-            fy_md= median(md)) %>% 
-  left_join(study_site_grid %>% rename(site_idx=SiteID)) %>% 
-  st_as_sf()
-
-### facet version ------------------
-ggplot()+
-  geom_sf(data=pelim_sum_fy,aes(fill=fy_md))+
-  geom_sf(data=elim_areas %>% filter(Area_Name!="0"),aes(col=Area_Name),
-          fill="transparent",lwd=1.5)+
-  facet_wrap(.~fy,ncol=1)+
-  scale_fill_viridis_c(#limits=c(0,1),
-    direction=-1,
-    name="Feral swine \nelimination probability")+
-  scale_color_discrete(name="Elimination Area")+
-  theme(panel.background=element_blank(),
-        axis.ticks=element_blank(),
-        axis.text=element_blank(),
-        plot.margin = margin(1,1,1,1, "cm"),
-        text=element_text(size=15))
-
-ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pelim_all_yrs.jpeg"),
-       device="jpeg",width=8,height=10,units="in")
-
-##calculate by fy and elim area --------------------
-pelim_sum_fy <- pelim_sum_fy %>% st_intersection(elim_areas %>% select(Area_Name))
-pelim_ea_fy <- pelim_sum_fy %>% st_drop_geometry() %>% 
-  group_by(fy,Area_Name) %>% 
-  summarise(mn=mean(fy_mn),
-            md=median(fy_md))
-
-ggplot(pelim_ea_fy)+
-  geom_line(aes(x=factor(fy),y=mn,col=Area_Name,group=Area_Name),lwd=1)+
-  ylab("Mean p(elim)")+xlab("FY")+
-  scale_color_discrete(name="Elimination Area")+
-  theme(text=element_text(size=15))
-
-ggplot(pelim_ea_fy)+
-  geom_line(aes(x=factor(fy),y=md,col=Area_Name,group=Area_Name),lwd=1)+
-  ylab("Median p(elim)")+xlab("FY")+
-  scale_color_discrete(name="Elimination Area")+
-  theme(text=element_text(size=15))
-
-##calculate by season and elim area------------------------
-pelim_sum_sf <- pelim_sum_sf %>% st_intersection(elim_areas %>% select(Area_Name))
-pelim_sum_sf <- pelim_sum_sf %>% left_join(dat_occ %>% select(period_idx,per_start) %>% distinct())
-pelim_ea <- pelim_sum_sf %>% st_drop_geometry() %>% 
-  group_by(period_idx,Area_Name) %>% 
-  summarise(season=min(per_start),
-            mn=mean(mn),
-            md=median(md))
+# pelim <- do.call("rbind",lapply(1:nChains,function(i){samples[[i]][grep("pelim",colnames(samples[[i]]))]}))
+# 
+# pelim_sum <- data.frame(idx=colnames(pelim),
+#                        mn=colMeans(pelim),
+#                        md=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.5)),
+#                        lci=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.025)),
+#                        uci=sapply(1:ncol(pelim),function(i)quantile(pelim[,i],prob=0.975)))
+# 
+# pelim_sum$site_idx <- sapply(1:nrow(pelim_sum),function(x){
+#   as.numeric(gsub("\\[","",gsub("pelim","",unlist(str_split(pelim_sum[x,"idx"],","))[1])))})
+# 
+# pelim_sum$period_idx <- sapply(1:nrow(pelim_sum),function(x){
+#   as.numeric(gsub("\\]","",unlist(str_split((pelim_sum[x,"idx"]),","))[2]))})
+# 
+# pelim_sum$per_start <- sapply(1:nrow(pelim_sum),function(i){
+#   min(dat_occ$per_start[dat_occ$period_idx==pelim_sum$period_idx[i]])})
+# pelim_sum$per_start <- as.Date(pelim_sum$per_start,origin='1970-01-01')
+# pelim_sum$year <- year(pelim_sum$per_start)
+# pelim_sum$fy <- pelim_sum$year
+# pelim_sum$fy[month(pelim_sum$per_start)%in%c(10:12)] <- 
+#   pelim_sum$fy[month(pelim_sum$per_start)%in%c(10:12)] +1
+# 
+# pelim_sum_sf <- pelim_sum %>% 
+#   left_join(study_site_grid %>% rename(site_idx=SiteID)) %>% 
+#   st_as_sf()
+# 
+# pelim_sum <- pelim_sum %>% 
+#   left_join(study_site_grid %>% 
+#               st_drop_geometry() %>% 
+#               rename(site_idx=SiteID) %>% 
+#               select(site_idx,Area_Name))
+# pabs_ea_sum <- pelim_sum %>% 
+#   group_by(Area_Name,per_start) %>% 
+#   summarise(ea_md=median(md))
+# 
+# ## fiscal year summary ------------------
+# ###individiual plots -------------------
+# pelim_sum_fy <- pelim_sum %>% group_by(fy,site_idx) %>% 
+#   summarise(fy_mn = mean(mn),
+#             fy_md= median(md)) %>% 
+#   left_join(study_site_grid %>% rename(site_idx=SiteID)) %>% 
+#   st_as_sf()
+# 
+# ### facet version ------------------
+# ggplot()+
+#   geom_sf(data=pelim_sum_fy,aes(fill=fy_md))+
+#   geom_sf(data=elim_areas %>% filter(Area_Name!="0"),aes(col=Area_Name),
+#           fill="transparent",lwd=1.5)+
+#   facet_wrap(.~fy,ncol=1)+
+#   scale_fill_viridis_c(#limits=c(0,1),
+#     direction=-1,
+#     name="Feral swine \nelimination probability")+
+#   scale_color_discrete(name="Elimination Area")+
+#   theme(panel.background=element_blank(),
+#         axis.ticks=element_blank(),
+#         axis.text=element_blank(),
+#         plot.margin = margin(1,1,1,1, "cm"),
+#         text=element_text(size=15))
+# 
+# ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/pelim_all_yrs.jpeg"),
+#        device="jpeg",width=8,height=10,units="in")
+# 
+# ##calculate by fy and elim area --------------------
+# pelim_sum_fy <- pelim_sum_fy %>% st_intersection(elim_areas %>% select(Area_Name))
+# pelim_ea_fy <- pelim_sum_fy %>% st_drop_geometry() %>% 
+#   group_by(fy,Area_Name) %>% 
+#   summarise(mn=mean(fy_mn),
+#             md=median(fy_md))
+# 
+# ggplot(pelim_ea_fy)+
+#   geom_line(aes(x=factor(fy),y=mn,col=Area_Name,group=Area_Name),lwd=1)+
+#   ylab("Mean p(elim)")+xlab("FY")+
+#   scale_color_discrete(name="Elimination Area")+
+#   theme(text=element_text(size=15))
+# 
+# ggplot(pelim_ea_fy)+
+#   geom_line(aes(x=factor(fy),y=md,col=Area_Name,group=Area_Name),lwd=1)+
+#   ylab("Median p(elim)")+xlab("FY")+
+#   scale_color_discrete(name="Elimination Area")+
+#   theme(text=element_text(size=15))
+# 
+# ##calculate by season and elim area------------------------
+# pelim_sum_sf <- pelim_sum_sf %>% st_intersection(elim_areas %>% select(Area_Name))
+# pelim_sum_sf <- pelim_sum_sf %>% left_join(dat_occ %>% select(period_idx,per_start) %>% distinct())
+# pelim_ea <- pelim_sum_sf %>% st_drop_geometry() %>% 
+#   group_by(period_idx,Area_Name) %>% 
+#   summarise(season=min(per_start),
+#             mn=mean(mn),
+#             md=median(md))
 
 #number of samples to elimination --------------------
 syseff <- data.frame(trap_nights=c((0.25/2.59)*45,
@@ -667,6 +718,7 @@ N <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
                    chain=i)})),
   samp=rep(1:nmcmc,nChains))
 
+
 N_long <- N %>% pivot_longer(cols=1:(ncol(N)-2),
                              values_to = "N",
                              names_to="idx") %>% 
@@ -684,16 +736,19 @@ per_idx$fy[month(per_idx$per_start)%in%c(10,11,12)] <- per_idx$fy[month(per_idx$
 
 N_long <- N_long %>% left_join(per_idx)
 
-lambda_N <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
-  cbind.data.frame(samples[[i]][grepl("lambda",colnames(samples[[i]]))],                   
-                   chain=i)})),
-  samp=rep(1:nmcmc,nChains))
+# lambda_N <- cbind.data.frame(do.call("rbind",lapply(1:nChains,function(i){
+#   cbind.data.frame(samples[[i]][grepl("lambda",colnames(samples[[i]]))],                   
+#                    chain=i)})),
+#   samp=rep(1:nmcmc,nChains))
+lambda_N<-lambda_long %>% rename(lambda=value)
 
 N_long <- N_long %>% 
   left_join(lambda_N)%>% 
   left_join(study_site_grid %>%
               st_drop_geometry() %>% 
               select(SiteID,area_km))
+
+N_long %>% filter(is.na(N))
 
 #proportion needed to combat pop growth
 N_long$lambda_prop <- rpois(nrow(N_long),N_long$N * (N_long$lambda-1))
@@ -702,7 +757,7 @@ N_long$lambda_prop[is.na(N_long$lambda_prop)] <- 0
 N_long$lambda_prop_dens[is.na(N_long$lambda_prop_dens)] <- 0
 
 #standardizes abundance 
-N_ss <- sqrt(sum(N_long$N^2)/(length(N_long$N)-1))
+N_ss <- sqrt(sum(N_long$N[!is.na(N_long$N)]^2)/(length(N_long$N[!is.na(N_long$N)])-1))
 N_long$N_std <- N_long$N/N_ss
 N_long$lambda_prop_std <- N_long$lambda_prop/N_ss
 
@@ -725,11 +780,12 @@ N_sum <- N_long %>%
                       "lambda_prop","lambda_prop_std","lambda_prop_dens"),
                names_to="metric",values_to="value") %>% 
   group_by(metric,SiteID,period_idx,per_start,year,fy) %>% 
-  summarise(mn=mean(value),
+  summarise(mn=mean(value,na.rm=T),
             md=median(value),
-            lci=quantile(value,0.025),
-            uci=quantile(value,0.975)) %>% 
+            lci=quantile(value,0.025,na.rm=T),
+            uci=quantile(value,0.975,na.rm=T)) %>% 
   pivot_wider(names_from=metric,values_from = c(mn,md,lci,uci))
+
 
 
 ####raw abundance EA 4 and 6 -------------------------
@@ -737,32 +793,64 @@ dat_rem_sum <- dat_rem_sum %>% left_join(study_site_grid %>% st_drop_geometry() 
                                            select(SiteID,area_km))
 dat_rem_sum$tot_rem_km <- dat_rem_sum$removal/dat_rem_sum$area_km
 
+site_rem <- dat_rem %>%
+  filter(tot_rem>0) %>%
+  group_by(SiteID) %>%
+  summarise(n=n()) %>%
+  arrange(desc(n))
+
+# rem_cutoff <- quantile(site_rem$n,prob=0.90)
+# site_rem_cutoff <- site_rem %>% filter(n>=rem_cutoff)
+# N_sum_top <- N_sum %>% filter(SiteID%in%site_rem_cutoff$SiteID)
+# dat_rem_sum_top <- dat_rem_sum %>% filter(SiteID%in%site_rem_cutoff$SiteID)
+
+site_rem_cutoff <- site_rem[1:6,]
+N_sum_top <- N_sum %>% filter(SiteID%in%site_rem_cutoff$SiteID)
+dat_rem_sum_top <- dat_rem_sum %>% filter(SiteID%in%site_rem_cutoff$SiteID)
+
+#map of highglighted sites
+ssg_top <- study_site_grid %>% filter(SiteID%in%site_rem_cutoff$SiteID)
+
+ggplot()+
+  geom_sf(data=study_site_grid)+
+  geom_sf(data=ssg_top,aes(fill=factor(SiteID)))+
+  geom_sf_label(data=ssg_top,aes(label=SiteID),size=3,alpha=0.7)+
+  # scale_fill_discrete(name="Top Removal Sites")+
+  guides(fill="none")+
+  theme(panel.background = element_blank(),
+        text=element_text(size=15),
+        axis.ticks=element_blank(),
+        axis.title = element_blank(),
+        axis.text=element_blank())
+ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/top_removal_sites_map.jpeg"),
+       device="jpeg",width=7,height=5,units="in")
+
 axis_trans<- 0.4
 ggplot()+  
-  geom_ribbon(data=N_sum,
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_N,ymax=uci_N,fill="Estimated Abundance"),alpha=0.2)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_N,col="Estimated Abundance"),lwd=1)+
-  geom_bar(data=dat_rem_sum,
-           aes(x=month,y=removal/axis_trans),stat="identity",
-           alpha=0.6)+
-  geom_ribbon(data=N_sum,
-              aes(x=per_start,
-                  ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans,
-                  fill="Removal Needed"),
-              alpha=0.1)+
-  geom_line(data=N_sum,aes(x=per_start,y=md_lambda_prop/axis_trans,group=SiteID,
-                           col="Removal Needed"),
-            lwd=1,lty=2)+
-  geom_ribbon(data=N_sum,
+  # geom_bar(data=dat_rem_sum_top,
+  #          aes(x=month,y=removal/axis_trans),stat="identity",
+  #          alpha=0.6)+
+  # geom_ribbon(data=N_sum_top,
+  #             aes(x=per_start,
+  #                 ymin=lci_lambda_prop/axis_trans,ymax=uci_lambda_prop/axis_trans,
+  #                 fill="Removal Needed"),
+  #             alpha=0.1)+
+  # geom_line(data=N_sum_top,aes(x=per_start,y=md_lambda_prop/axis_trans,group=SiteID,
+  #                          col="Removal Needed"),
+  #           lwd=1,lty=2)+
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_N_no_rem,ymax=uci_N_no_rem,
                   fill="No Removal"),
               alpha=0.1)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_N_no_rem,col="No Removal"),
             lwd=1,lty=3)+
   facet_wrap(.~SiteID)+
-  scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_trans, name="No. feral swine removed"))+
+  # scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_trans, name="No. feral swine removed"))+
   scale_fill_manual(name="",
                     values=c("Estimated Abundance"="black",
                              "No Removal"="red",
@@ -780,24 +868,24 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/abundance_trend_remo
 
 #### density EA 4 and 6 -------------------------
 ##### density -----------
-axis_trans_d<- 0.03
+axis_trans_d<- 0.05
 ggplot()+  
-  geom_ribbon(data=N_sum,
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_dens,ymax=uci_dens,
                   fill="Estimated Density"),alpha=0.2)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_dens,col="Estimated Density"),lwd=1)+
-  geom_bar(data=dat_rem_sum,
-           aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
-           alpha=0.6)+
-  geom_ribbon(data=N_sum,
+  # geom_bar(data=dat_rem_sum_top,
+  #          aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
+  #          alpha=0.6)+
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_dens_no_rem,ymax=uci_dens_no_rem,fill="No Removal"),
               alpha=0.1)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_dens_no_rem,col="No Removal"),lwd=1,lty=3)+
   facet_wrap(.~SiteID)+
-  scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_trans_d,
-                                         name="No. feral swine removed per km2"))+
+  # scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_trans_d,
+  #                                        name="No. feral swine removed per km2"))+
   scale_fill_manual(name="",
                      values=c("Estimated Density"="black",
                               "No Removal"="red"
@@ -809,22 +897,24 @@ ggplot()+
   ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
   xlab("Season")+
   theme(text=element_text(size=15))
+
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_removal.jpeg"),
        device="jpeg",width=10,height=6,units="in")
+
 
 ##### removal needed -----------
 axis_trans_d<- 0.03
 ggplot()+  
-  geom_bar(data=dat_rem_sum,
+  geom_bar(data=dat_rem_sum_top,
            aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
            alpha=0.6)+
-  geom_ribbon(data=N_sum,
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,
                   ymin=lci_lambda_prop_dens/axis_trans_d,
                   ymax=uci_lambda_prop_dens/axis_trans_d,
                   fill="Removal Needed"),
               alpha=0.1)+
-  geom_line(data=N_sum,aes(x=per_start,
+  geom_line(data=N_sum_top,aes(x=per_start,
                            y=md_lambda_prop_dens/axis_trans_d,group=SiteID,
                            col="Removal Needed"),lwd=1,lty=2)+
 
@@ -840,31 +930,32 @@ ggplot()+
   ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
   xlab("Season")+
   theme(text=element_text(size=15))
+
 ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/density_trend_removal_needed.jpeg"),
        device="jpeg",width=10,height=6,units="in")
 
 
-####standardized abundance EA 4 and 6 -------------------------
+####standardized abundance  -------------------------
 axis_scale <- 3
 ggplot()+  
-  geom_ribbon(data=N_sum,
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std,
                   fill="Estimated \nStandardized Abundance"),alpha=0.2)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_N_std,col="Estimated \nStandardized Abundance"),lwd=1)+
-  geom_bar(data=dat_rem_sum,
-           aes(x=month,y=tot_rem_km/axis_scale),stat="identity",
-           alpha=0.6)+
-  geom_ribbon(data=N_sum,
+  # geom_bar(data=dat_rem_sum,
+  #          aes(x=month,y=tot_rem_km/axis_scale),stat="identity",
+  #          alpha=0.6)+
+  geom_ribbon(data=N_sum_top,
               aes(x=per_start,ymin=lci_N_ss_no_rem,ymax=uci_N_ss_no_rem,
                   fill="No Removal"),
               alpha=0.1)+
-  geom_line(data=N_sum,
+  geom_line(data=N_sum_top,
             aes(x=per_start,y=md_N_ss_no_rem,col="No Removal"),
             lty=3,lwd=1)+
   facet_wrap(.~SiteID)+
-  scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_scale, 
-                                         name="No. feral swine removed per km2"))+
+  # scale_y_continuous(sec.axis = sec_axis(transform=~.*axis_scale, 
+                                         # name="No. feral swine removed per km2"))+
   scale_fill_manual(name="",
                     values=c("Estimated \nStandardized Abundance"="black",
                              "No Removal"="red",
@@ -882,9 +973,11 @@ ggsave(filename=paste0("./Model Outputs/Plots/",subfolder,"/std_abundance_trend_
        device="jpeg",width=10,height=6,units="in")
 
 ### annual ------------------------
-N_yr <- N_long %>% filter(month(per_start)==10 | (month(per_start)==9 & year(per_start)==2024))
-N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
+N_yr <- N_long %>% 
+  filter(SiteID%in%site_rem_cutoff$SiteID) %>% 
+  filter(month(per_start)==10 | (month(per_start)==7 & year(per_start)==2024))
 
+N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
 N_yr$N_prev<- NA
 for(i in 1:nrow(N_yr)){
   if(N_yr$per_temp[i]>1){
@@ -905,7 +998,8 @@ N_yr_sum <- N_yr %>%
             lci=quantile(per_change,0.025,na.rm=T),
             uci=quantile(per_change,0.975,na.rm=T)) 
 
-write.csv(N_yr_sum,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/N_change_table.csv"))
+write.csv(N_yr_sum,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",
+                          subfolder,"/N_change_table.csv"))
 
 # removal probability -----------------
 ## aerial ----------------
@@ -953,7 +1047,7 @@ g_t <- ggplot(det_t_sum)+
   theme(text=element_text(size=15))
 
 ##all together --------------------
-g_all <- gridExtra::arrangeGrob(g_a+ylim(0,0.001), g_t+ylim(0,0.001),nrow=1) #generates g
+g_all <- gridExtra::arrangeGrob(g_a, g_t,nrow=1) #generates g
 
 ggsave(g_all,file=paste0("./Model Outputs/Plots/",subfolder,"/rem_det_curve_all.jpeg"),
        device="jpeg",width=13,height=6,units="in")
@@ -980,9 +1074,14 @@ rem_df <- rem_mn %>% pivot_longer(cols=1:2,names_to="rem_typ",values_to="value")
             md=median(value),
             lci=quantile(value,0.025),
             uci=quantile(value,0.975))
+rem_df$effect_area_hrs <- c(max(dat_aerial$effect_area_hrs),max(dat_trap$effect_area_hrs))
+rem_df$prop_site_impact <- c(max(dat_aerial$prop_site_impact),max(dat_trap$prop_site_impact))
 
 #save posterior summaries -------------
+#save for shiny app
+save(alpha,sd_pdet,file="C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Shiny/mo_feral_swine_elim_app/alpha_sd_pdet_samples.RData")
 st_write(pabs_sum_sf,paste0("./Model outputs/Plots/",subfolder,"/pabs_sum_sf.shp"),append=F)
+
 save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      pabs_sum_fy,pabs_thresh,pabs_thresh,pabs_thresh_ext,
      # pelim_ea,pelim_ea_fy,
@@ -991,7 +1090,8 @@ save(eff_elim_sum,N_sum,N_yr_sum,pabs_sum_ea,pabs_sum,
      det_a_sum,det_t_sum,
      pabs_thresh_yr,det_sum,nsites_rem,nsites_occ,nperiods,nmcmc,nChains,
      dat_occ,dat_rem,dat_rem_sum,elim_thresh,rem_df,
-     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",subfolder,"/posterior_summaries_15JAN25.RData"))
+     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/Plots/",
+                 subfolder,"/posterior_summaries_05FEB25.RData"))
 
 
           
