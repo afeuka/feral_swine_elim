@@ -10,43 +10,70 @@ library(tidyverse)
 library(nimble)
 library(snow)
 
-setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/feral_swine_elim")
+# setwd("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/feral_swine_elim")
+
+#data cleaning/firmatting functions
 source("./Functions/data_functions_occ_rem_dynamic.R")
+
+#where output files are sent
+input_dir <- file.path('./Data','input')
+output_dir <- file.path('./Data','model_ready')
 
 end_fy <- "24"
 occ_scale <- "watersheds"
 abund_scale <- "watersheds"
+pass_scale <- "sys" 
 period <- "season"
-study_site_grid <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
-study_site_grid <- study_site_grid %>% rename(elim_area_idx=elm_r_d,
-                                              Area_Name=Area_Nm)
+study_site_grid <- st_read(file.path(input_dir,
+                                     "HUC10_MO","huc10_siteIDs_cond_EA.shp")) %>% 
+  rename(elim_area_idx=elm_r_d,
+         Area_Name=Area_Nm)
 
-if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))){
-  load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))
+if(file.exists(file.path(output_dir,"mo_sysbait_rem_2020-10-01_2024-12-31.RData"))){
+  load(file.path(output_dir,"mo_sysbait_rem_2020-10-01_2024-12-31.RData"))
 } else {
   
   ## systematic baiting  ---------------------------
   sys <- grid_sysbait_take(study_site_grid = study_site_grid,
                            start_date="2020-09-01", 
-                           end_date=paste0("20",end_fy,"-09-30"),
-                           period=period)
+                           end_date=paste0("20",end_fy,"-12-31"),
+                           period=period,
+                           data_dir=input_dir)
   ## removal  ---------------------------
-  rem <- grid_removals(study_site_grid = study_site_grid,
+  rem <- grid_removals(sec=sys$sec,
+                       study_site_grid = study_site_grid,
                        sysbait_det_eff = sys$sysbait_det_eff,
-                       period=period)
+                       period=period,
+                       data_dir=input_dir)
   
   eff <- grid_effort(sysbait_det_eff=sys$sysbait_det_eff,
                      rem_site_sf = rem$rem_site_sf,
                      study_site_grid=study_site_grid,
                      occ_scale=occ_scale,
-                     abund_scale=abund_scale)
+                     abund_scale=abund_scale,
+                     pass_scale=pass_scale,
+                     data_dir=input_dir)
+  
+  cov <- grid_covs(occ_scale=occ_scale,
+                   abund_scale=abund_scale,
+                   sysbait_det_eff=sys$sysbait_det_eff,
+                   study_site_grid=study_site_grid,
+                   data_dir=input_dir)
   
   sysbait_det_eff <- eff$sysbait_det_eff
-  nlcd_siteid <- eff$nlcd_siteid
   rem_eff_site <- eff$rem_eff_site
+  
+  nlcd_siteid <- cov$nlcd_siteid
+  oak_siteid <- cov$oak_siteid
+  nfsp_siteid <- cov$ssg_nfsp
 
-  save(nlcd_siteid,sysbait_det_eff,rem_eff_site,
-       file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/sysbait_10day_season_nlcd_20_",end_fy,"_528m_buffer_",abund_scale,".RData"))
+  save(nlcd_siteid,oak_siteid,nfsp_siteid,sysbait_det_eff,rem_eff_site,
+       file=file.path(output_dir,
+             paste0("mo_sysbait_rem_",
+                    min(sysbait_det_eff$subper_start),"_",
+                    max(sysbait_det_eff$subper_end),
+                    ".RData")
+                   ))
 }
 
 # max(sysbait_det_eff$subper_start)
@@ -54,6 +81,7 @@ if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missour
 
 # hist(rem_eff_site$effect_area_hrs)
 # hist(rem_eff_site$prop_site_impact)
+
 #fit model -------------------
 source("./Functions/avail_fun.R")
 source("./Functions/fit_zi_rem_occ_mod_binom_dynamic.R")
@@ -62,6 +90,7 @@ source("./Functions/fit_zi_rem_occ_mod_binom_dynamic.R")
 mcmc.out <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
                            rem_eff_site = rem_eff_site,
                            study_site_grid=study_site_grid,
+                           oak_siteid=oak_siteid,
                            abund_scale=abund_scale,
                            eff_weeks =10,
                            monitors = NA,
@@ -80,21 +109,25 @@ nea <- mcmc.out$nea
 nperiods <- mcmc.out$nperiods
 nbeta <- mcmc.out$nbeta
 site_idx_lookup <- mcmc.out$site_idx_lookup
+oak_siteid <- mcmc.out$oak_siteid
 
 # save(samples,dat_occ,dat_rem,nsites,nperiods,nbeta,
 #      file = "./Model outputs/ziBinMod_determ_psi.Rdata")
 
 ##parallel --------------------
-nChains <- 3
+nChains <- 8
 niter <- 500000
-burnProp <- 0.8
+burnProp <- 0.80
 thin <- 10
 
 mcmcPar <- function(j){
-  samp <- fit_zi_rem_occ(sysbait_det_eff = sysbait_det_eff,
-                         rem_eff_site = rem_eff_site,
+  samp <- fit_zi_rem_occ(dat_occ = sysbait_det_eff,
+                         dat_rem = rem_eff_site,
                          study_site_grid=study_site_grid,
-                         eff_weeks=10,
+                         oak_siteid=oak_siteid,
+                         nlcd_siteid=nlcd_siteid,
+                         nfsp_siteid=nfsp_siteid,
+                         eff_weeks=4,
                          abund_scale=abund_scale,
                          monitors=NA, 
                          niter=niter, 
@@ -105,7 +138,7 @@ mcmcPar <- function(j){
 
 cl <- makeCluster(nChains, "SOCK")
 clusterExport(cl, list("sysbait_det_eff","rem_eff_site","nlcd_siteid",
-                       "abund_scale",
+                       "abund_scale","oak_siteid",
                        "study_site_grid","niter","burnProp","thin",
                        "fit_zi_rem_occ","avail_fun"))
 
@@ -116,9 +149,15 @@ stopCluster(cl)
 
 samples <- list(parSamples[[1]]$samples,
                 parSamples[[2]]$samples,
-                parSamples[[3]]$samples)
-                # parSamples[[4]]$samples,
-                # parSamples[[5]]$samples)
+                parSamples[[3]]$samples,
+                parSamples[[4]]$samples,
+                parSamples[[5]]$samples,
+                parSamples[[6]]$samples,
+                parSamples[[7]]$samples,
+                parSamples[[8]]$samples
+                )
+samples <- lapply(1:nChains,function(i)parSamples[[i]]$samples)
+
 dat_occ <- parSamples[[1]]$dat_occ
 dat_trap <- parSamples[[1]]$dat_trap
 dat_aerial <- parSamples[[1]]$dat_aerial
@@ -131,8 +170,10 @@ agri <- parSamples[[1]]$agri
 develop <- parSamples[[1]]$develop
 mn_te <- parSamples[[1]]$mn_te
 site_idx_lookup <- parSamples[[1]]$site_idx_lookup
+rem_covs <- parSamples[[1]]$rem_covs
 
 save(samples,dat_occ,nsites_occ,nsites_rem,nperiods,nbeta,agri,develop,
-     dat_trap,dat_aerial,mn_te,site_idx_lookup,
-     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/ziBinMod_area_logit_det_20_",
-                 end_fy,"_lag_ws_13JAN25.Rdata"))
+     dat_trap,dat_aerial,mn_te,site_idx_lookup,rem_covs,
+     file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/nimble/Model outputs/mo_zibinom",
+                 min(sysbait_det_eff$subper_start),"_",
+                 max(sysbait_det_eff$subper_end),"_v1.Rdata"))
