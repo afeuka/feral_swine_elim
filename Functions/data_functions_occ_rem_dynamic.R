@@ -3,76 +3,34 @@
 ### Date: 05DEC2023
 ### Notes: numbering weeks strictly within month
 
+# start_date="2020-09-01"
+# end_date=paste0("20",end_fy,"-12-31")
+
 #grid systematic baiting by watershed
 grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
                               start_date="2020-09-01", #start date for data in y-m-d string
                               end_date="2023-09-30", #end date for data in y-m-d string
-                              period) {#"month"or "season"
+                              period,
+                              data_dir) {#"month"or "season"
   require(tidyverse)
   require(sf)
   require(lubridate)
   
   #section ------------------------------------
-  sec <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/MO_Public_Land_Survey_System/MO_Public_Land_Survey_System.shp",quiet=T)
+  sec <- st_read(file.path(data_dir,"MO_Public_Land_Survey_System","MO_Public_Land_Survey_System.shp"),quiet=T)
   sec <- st_transform(sec,st_crs(study_site_grid))
   sec <- st_intersection(sec,study_site_grid)
   
-  #clean systematic baiting -------------------------------
-  sys <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_Sept2020_Dec2022.csv")
-  sys1 <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_Jan2023_Jun2023.csv")
-  sys1<- sys1 %>% select(-c(GlobalID..,EditDate,Editor))
-  sys <- full_join(sys,sys1) 
-  sys2 <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_Jul2023_Nov2023.csv")
-  sys2 <- sys2 %>% select(-c(GlobalID..))
-  sys <- full_join(sys,sys2 %>% mutate(Lat=as.character(Lat),Long=as.character(Long))) 
-  sys <- sys %>% select(Site.Status, Baiting.Start.Date, Date.of.Hot.Bait, Site.Visit.Date, Site.Visit.Reason, Trap.Start.Date,
-                        Complete.Date, Lat, Long, CreationDate, Creator, Sounder.Size)
-  sys3 <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Systematic Baiting/Ops_July23_Sept24.csv")
-  sys3 <- sys3 %>% rename(Site.Status=SiteStatus,
-                          Baiting.Start.Date=BaitingStartDate,
-                          Date.of.Hot.Bait=DateHotBait,
-                          Site.Visit.Date=SiteVisitDate,
-                          Site.Visit.Reason=SiteVisitReas,
-                          Trap.Start.Date=TrapStartDate,
-                          Complete.Date=CompleteDate,
-                          Responsible.Trapper=ResposTrapper,
-                          CreationDate=CreationDate,
-                          Lat=lat,
-                          Long=long,
-                          Sounder.Size=SounderSize) %>% 
-    mutate(Lat=as.character(Lat),
-           Long=as.character(Long),
-           Sounder.Size=as.character(Sounder.Size)) %>% 
-    select(Site.Status, Baiting.Start.Date, Date.of.Hot.Bait, Site.Visit.Date, Site.Visit.Reason, Trap.Start.Date,
-           Complete.Date, Lat, Long, CreationDate, Creator, Sounder.Size)
-  
-  ##make date objects ---------------------------------
-  sys$Baiting.Start.Date <- as.Date(sys$Baiting.Start.Date,format="%m/%d/%Y %H:%M")
-  sys$Date.of.Hot.Bait <- as.Date(sys$Date.of.Hot.Bait,format="%m/%d/%Y %H:%M")
-  sys$Complete.Date <- as.Date(sys$Complete.Date,format="%m/%d/%Y %H:%M")
-  sys$Trap.Start.Date <- as.Date(sys$Trap.Start.Date,format="%m/%d/%Y %H:%M")
-  sys$Site.Visit.Date <- as.Date(sys$Site.Visit.Date,format="%m/%d/%Y %H:%M")
-  sys$CreationDate <- as.Date(sys$CreationDate,format="%m/%d/%Y %H:%M:%S")
-  
-  sys3$Baiting.Start.Date <-as.Date(sys3$Baiting.Start.Date,format="%Y-%m-%d %H:%M:%S")
-  sys3$Date.of.Hot.Bait <- as.Date(sys3$Date.of.Hot.Bait,format="%Y-%m-%d %H:%M:%S")
-  sys3$Complete.Date <- as.Date(sys3$Complete.Date,format="%Y-%m-%d %H:%M:%S")
-  sys3$Trap.Start.Date <- as.Date(sys3$Trap.Start.Date,format="%Y-%m-%d %H:%M:%S")
-  sys3$Site.Visit.Date <- as.Date(sys3$Site.Visit.Date,format="%Y-%m-%d %H:%M:%S")
-  sys3$CreationDate <- as.Date(sys3$CreationDate,format="%Y-%m-%d %H:%M:%S")
-  
-  # sys3 %>% filter(Baiting.Start.Date>=as.Date("2023-07-01")) %>% arrange(Baiting.Start.Date)
-  # sys %>% filter(Baiting.Start.Date>=as.Date("2023-07-01")) %>% arrange(Baiting.Start.Date)
-  
-  sys <- full_join(sys,sys3)
+  #collated MO ops/sys bait data
+  sys <- readRDS(file.path(data_dir,"MO_sysbait_clean.rds"))
   
   ##remove NA geometries -------------------------------
   sys$Lat <- as.numeric(sys$Lat)
   sys$Long <- as.numeric(sys$Long)
   sys <- subset(sys, !is.na(Lat))
   
-  sys$Site.Visit.Reason[sys$Site.Visit.Reason=="<Null>"] <- NA
-  sys <- subset(sys,!(Site.Visit.Reason%in%c("Domestic Observed","Misinformation")))
+  sys$SiteVisitReason[sys$SiteVisitReason=="<Null>"] <- NA
+  sys <- subset(sys,!(SiteVisitReason%in%c("Domestic Observed","Misinformation")))
   
   ##use southern mo only ---------------------------------
   sys <- sys[which(sys$Lat<39),]
@@ -81,14 +39,14 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   sys_sf <- st_as_sf(sys,coords=c("Long","Lat"),crs="epsg:4326")
   sys_sf <- st_transform(sys_sf,st_crs(study_site_grid)) %>% 
     st_intersection(sec) %>% 
-    select(Site.Status,Baiting.Start.Date,Date.of.Hot.Bait,
-           Trap.Start.Date,Complete.Date,LABEL_,SiteID,geometry) %>% 
+    select(SiteStatus,BaitingStartDate,DateHotBait,
+           TrapStartDate,CompleteDate,LABEL_,SiteID,geometry) %>% 
     rename(section = LABEL_)
   
   #filter to study period
   start_date <- as.Date(start_date,format="%Y-%m-%d")
-  sys_sf <- sys_sf %>% filter((Trap.Start.Date>=start_date |is.na(Trap.Start.Date)))
-  sys_sf <- sys_sf %>% filter((Baiting.Start.Date>=start_date|is.na(Baiting.Start.Date)))
+  sys_sf <- sys_sf %>% filter((TrapStartDate>=start_date |is.na(TrapStartDate)))
+  sys_sf <- sys_sf %>% filter((BaitingStartDate>=start_date|is.na(BaitingStartDate)))
   
   #set up whole site data frame ---------------------
   if(month(start_date)%in%c(10,11,12)){
@@ -101,7 +59,8 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
     fy_mo <- c(7,10,1,4)
   }
   
-  max_yr <- max(year(sys_sf$Trap.Start.Date),year(sys_sf$Baiting.Start.Date),year(sys_sf$Date.of.Hot.Bait),na.rm=T)
+  max_yr <- max(year(sys_sf$TrapStartDate),year(sys_sf$BaitingStartDate),
+                year(sys_sf$DateHotBait),na.rm=T)
   det_yr <- year(start_date):max_yr
   per_start <- as.Date(sapply(1:length(fy_mo),function(i){
     sapply(1:length(det_yr),function(j){
@@ -180,81 +139,81 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   subper <- as.data.frame(subper)
   
   sys_sf <- sys_sf %>% 
-    filter(Baiting.Start.Date<Trap.Start.Date | 
-             is.na(Baiting.Start.Date) | 
-             is.na(Trap.Start.Date)) 
+    filter(BaitingStartDate<TrapStartDate | 
+             is.na(BaitingStartDate) | 
+             is.na(TrapStartDate)) 
   
   sys_df <- sys_sf %>% st_drop_geometry()
   
   # hog detections occurring three days prior to trapping
-  sys_df$Hog.Detection.Sys <- rep(NA,nrow(sys_df))
+  sys_df$HogDetectionSys <- rep(NA,nrow(sys_df))
   for(i in 1:nrow(sys_df)){
-    if(!is.na(sys_df$Trap.Start.Date[i]) & is.na(sys_df$Date.of.Hot.Bait[i])){
-      sys_df$Hog.Detection.Sys[i] <- sys_df$Trap.Start.Date[i] - 3
-      sys_df$Date.of.Hot.Bait[i] <- as.Date(sys_df$Hog.Detection.Sys[i],origin="1970-01-01") 
+    if(!is.na(sys_df$TrapStartDate[i]) & is.na(sys_df$DateHotBait[i])){
+      sys_df$HogDetectionSys[i] <- sys_df$TrapStartDate[i] - 3
+      sys_df$DateHotBait[i] <- as.Date(sys_df$HogDetectionSys[i],origin="1970-01-01") 
     }
-    if(!is.na(sys_df$Date.of.Hot.Bait[i])){
-      sys_df$Hog.Detection.Sys[i] <- sys_df$Date.of.Hot.Bait[i] 
+    if(!is.na(sys_df$DateHotBait[i])){
+      sys_df$HogDetectionSys[i] <- sys_df$DateHotBait[i] 
     }
   }
-  sys_df$Hog.Detection.Sys <- as.Date(sys_df$Hog.Detection.Sys,origin="1970-01-01")
+  sys_df$HogDetectionSys <- as.Date(sys_df$HogDetectionSys,origin="1970-01-01")
   
   ##clean dates  ---------------------------------------------
   for(i in 1:nrow(sys_df)){
     #no complete date but baiting start date
-    if((!is.na(sys_df$Baiting.Start.Date[i]) & is.na(sys_df$Complete.Date[i]))){
-      sys_df$Complete.Date[i] <- sys_df$Baiting.Start.Date[i] + days(90)
+    if((!is.na(sys_df$BaitingStartDate[i]) & is.na(sys_df$CompleteDate[i]))){
+      sys_df$CompleteDate[i] <- sys_df$BaitingStartDate[i] + days(90)
     }
     #no baiting start date but complete date
-    if(!is.na(sys_df$Complete.Date[i]) & is.na(sys_df$Baiting.Start.Date[i])){
-      sys_df$Baiting.Start.Date[i] <- sys_df$Complete.Date[i] - days(90)
+    if(!is.na(sys_df$CompleteDate[i]) & is.na(sys_df$BaitingStartDate[i])){
+      sys_df$BaitingStartDate[i] <- sys_df$CompleteDate[i] - days(90)
     }
     # #no complete date but trap start date
-    # if(!is.na(sys_df$Trap.Start.Date[i]) & is.na(sys_df$Complete.Date[i])){
-    #   sys_df$Complete.Date[i] <- sys_df$Trap.Start.Date[i] + days(90)
+    # if(!is.na(sys_df$TrapStartDate[i]) & is.na(sys_df$CompleteDate[i])){
+    #   sys_df$CompleteDate[i] <- sys_df$TrapStartDate[i] + days(90)
     # }
-    if(!is.na(sys_df$Baiting.Start.Date[i]) & !is.na(sys_df$Hog.Detection.Sys[i])){
-      if(sys_df$Hog.Detection.Sys[i]<sys_df$Baiting.Start.Date[i]){
-        sys_df$Baiting.Start.Date[i] <- sys_df$Hog.Detection.Sys[i]
+    if(!is.na(sys_df$BaitingStartDate[i]) & !is.na(sys_df$HogDetectionSys[i])){
+      if(sys_df$HogDetectionSys[i]<sys_df$BaitingStartDate[i]){
+        sys_df$BaitingStartDate[i] <- sys_df$HogDetectionSys[i]
       }
-    }else if(!is.na(sys_df$Trap.Start.Date[i]) & !is.na(sys_df$Hog.Detection.Sys[i])){
-      if(sys_df$Hog.Detection.Sys[i]<sys_df$Trap.Start.Date[i]){
-        sys_df$Trap.Start.Date[i] <- sys_df$Hog.Detection.Sys[i]
+    }else if(!is.na(sys_df$TrapStartDate[i]) & !is.na(sys_df$HogDetectionSys[i])){
+      if(sys_df$HogDetectionSys[i]<sys_df$TrapStartDate[i]){
+        sys_df$TrapStartDate[i] <- sys_df$HogDetectionSys[i]
       }
     }
     # #complete date is earlier than baiting start
-    # if(!(is.na(sys_df$Baiting.Start.Date[i]) | is.na(sys_df$Complete.Date[i]))){
-    #   if(sys_df$Baiting.Start.Date[i] > sys_df$Complete.Date[i]){
-    #     sys_df$Complete.Date[i] <- sys_df$Baiting.Start.Date[i] + days(90)
+    # if(!(is.na(sys_df$BaitingStartDate[i]) | is.na(sys_df$CompleteDate[i]))){
+    #   if(sys_df$BaitingStartDate[i] > sys_df$CompleteDate[i]){
+    #     sys_df$CompleteDate[i] <- sys_df$BaitingStartDate[i] + days(90)
     #   }
     # }
   }
   
-  sys_df <- sys_df %>% filter(Baiting.Start.Date<Complete.Date) 
+  sys_df <- sys_df %>% filter(BaitingStartDate<CompleteDate) 
   
   #correct complete date for end of study
   end_date <- as.Date(end_date,format="%Y-%m-%d")
-  sys_df$Complete.Date[sys_df$Complete.Date>end_date & 
-                         !is.na(sys_df$Complete.Date)] <- end_date
+  sys_df$CompleteDate[sys_df$CompleteDate>end_date & 
+                         !is.na(sys_df$CompleteDate)] <- end_date
   
   #remove days with no start or end date
-  sys_df <- subset(sys_df,!(is.na(Baiting.Start.Date) & is.na(Complete.Date)))
+  sys_df <- subset(sys_df,!(is.na(BaitingStartDate) & is.na(CompleteDate)))
   
   #remove duplicates
   sys_df <- sys_df[!duplicated(sys_df),]
   
   #add hot baits to capture history ------------------
   for(i in 1:nrow(sys_df)){
-    subper[which(subper$subper_start<=sys_df$Hog.Detection.Sys[i] & 
-                   subper$subper_end>=sys_df$Hog.Detection.Sys[i]),
+    subper[which(subper$subper_start<=sys_df$HogDetectionSys[i] & 
+                   subper$subper_end>=sys_df$HogDetectionSys[i]),
            as.character(sys_df$SiteID[i])] <- 1
   }
   
   #removal data ----------------------------------
-  rem <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Removal/Take/MO_ops_take_cleaned.csv")
+  rem <- readRDS(file.path(data_dir,"MO_take_clean.rds"))
   rem$Date <- as.POSIXct(rem$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
   rem_sf <- st_as_sf(rem,coords=c("Long","Lat"),crs="epsg:4326")
-  
+
   ## grid to study_site ------------------------------------------
   rem_sf <- st_transform(rem_sf, st_crs(study_site_grid))
   rem_sf_trap <- st_intersection(rem_sf,study_site_grid) %>%
@@ -274,8 +233,8 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   sys_df$detection_trap <- rep(NA,nrow(sys_df))
   sys_df_orig <- sys_df
   for(i in 1:nrow(sys_df_orig)){
-    rem_same <- which(rem_df_trap$Date>= sys_df_orig$Baiting.Start.Date[i] &
-                        rem_df_trap$Date<= sys_df_orig$Complete.Date[i] &
+    rem_same <- which(rem_df_trap$Date>= sys_df_orig$BaitingStartDate[i] &
+                        rem_df_trap$Date<= sys_df_orig$CompleteDate[i] &
                         rem_df_trap$section==sys_df_orig$section[i])
     
     # x[i] <- length(rem_same)
@@ -289,7 +248,7 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   }
   sys_df$detection_trap <- as.POSIXct(sys_df$detection_trap, tz="CST6CDT", origin="1970-01-01")
   
-  sys_df <- sys_df %>% rename(detection_sys=Hog.Detection.Sys) %>%
+  sys_df <- sys_df %>% rename(detection_sys=HogDetectionSys) %>%
     pivot_longer(cols=c("detection_sys","detection_trap"),names_to="det_typ",
                  values_to="det_date")
   sys_df <- as.data.frame(sys_df)
@@ -305,8 +264,8 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   
   # effort in trap days------------------------------------
   # j<-7
-  # i <- which(subper_eff$subper_start>=samp$Baiting.Start.Date[1]&
-  #              subper_eff$subper_end<=samp$Complete.Date[1])[1]
+  # i <- which(subper_eff$subper_start>=samp$BaitingStartDate[1]&
+  #              subper_eff$subper_end<=samp$CompleteDate[1])[1]
   subper_eff <- subper
   subper_eff[,as.character(unique(study_site_grid$SiteID))] <- 0
   # sys_df_trap <- sys_df %>% filter(det_typ=="detection_trap")
@@ -316,13 +275,13 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
     samp <- sys_df[which(sys_df$SiteID==j),]
     if(nrow(samp)>0){
       for(i in 1:nrow(subper_eff)){
-        idx <- which(samp$Baiting.Start.Date<=subper_eff$subper_start[i] &
-                       samp$Complete.Date>=subper_eff$subper_end[i])
+        idx <- which(samp$BaitingStartDate<=subper_eff$subper_start[i] &
+                       samp$CompleteDate>=subper_eff$subper_end[i])
         if(length(idx)>0){
           temp <- samp[idx,]
-          temp$Baiting.Start.Date[temp$Baiting.Start.Date<=subper_eff$subper_start[i]] <- subper_eff$subper_start[i]
-          temp$Complete.Date[temp$Complete.Date>=subper_eff$subper_end[i]] <- subper_eff$subper_end[i]
-          temp$days <- temp$Complete.Date-temp$Baiting.Start.Date +1 #include first day
+          temp$BaitingStartDate[temp$BaitingStartDate<=subper_eff$subper_start[i]] <- subper_eff$subper_start[i]
+          temp$CompleteDate[temp$CompleteDate>=subper_eff$subper_end[i]] <- subper_eff$subper_end[i]
+          temp$days <- temp$CompleteDate-temp$BaitingStartDate +1 #include first day
           #1 trap per site * number of days/trap = trap days
           subper_eff[i,as.character(j)] <- sum(as.numeric(temp$days[!duplicated(temp$section)]))
         }
@@ -343,29 +302,29 @@ grid_sysbait_take <- function(study_site_grid, #occupancy grid/sites
   #filter to study period 
   subper <- subper %>% filter(subper_start<=as.Date(end_date))
   
-  list(sysbait_det_eff=subper)
+  sysbait_det_eff <- subper
+  
+  list(sysbait_det_eff=sysbait_det_eff,
+       sec=sec)
   
 }
 # sysbait_det_eff <- sys$sysbait_det_eff
 
 #grid removals by elimination area
-grid_removals <- function(study_site_grid,
+grid_removals <- function(sec,
+                          study_site_grid,
                           sysbait_det_eff, #output from grid_sys_effort, by subperiod (10 days)
-                          period#season" or "month"
+                          period,#season" or "month"
+                          data_dir
 ){
   require(tidyverse)
   require(lubridate)
   require(sf)
-  require(terra)
-  
-  #section ------------------------------------
-  sec <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/MO_Public_Land_Survey_System/MO_Public_Land_Survey_System.shp",quiet=T)
-  sec <- st_transform(sec,st_crs(study_site_grid))
-  sec <- st_intersection(sec,study_site_grid)
+  # require(terra)
   
   #removal data ----------------------------------
   ## collector data
-  rem <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Removal/Take/MO_ops_take_cleaned.csv")
+  rem <- readRDS(file.path(data_dir,"MO_take_clean.rds"))
   
   ## mis data 
   # rem <- read.csv("./take_mo_all_dates.csv")
@@ -429,70 +388,98 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
                         rem_site_sf, #output from grid_removals
                         study_site_grid,#individual site boundaries
                         occ_scale,#"counties" or "watersheds"
-                        abund_scale#Watersheds" or "elim_areas"
+                        abund_scale,#Watersheds" or "elim_areas"
+                        pass_scale, #"day" or "sys"
+                        data_dir
 ){ 
+  require(ROracle)
+  require(keyring)
   
   #load effort data ------------------------------
   #data with point locations
-  if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")){
-    load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")
-  } else {
-    eff <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/MIS Pulls/mo_fs_effort_Sep2020_Sep2024_q6.csv")
-    eff <- eff %>% rename(lat =PRPU_N_LAT,lon=PRPU_E_LONG)
+  # if(file.exists("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/MIS/effort_2020_2024_clean_locs.RData")){
+  #   # load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/MIS/effort_2020_2024_clean_locs.RData")
+  # } else {
+  
+  #effort query
+  source(file.path(data_dir,"hours_query_mo.R"))
+  
+  #connect to MIS
+  host <- "aap00va0ora407.usda.net "
+  port <- 1521
+  service <- "wsmis.usda.net" 
+  drv <- dbDriver("Oracle")
+  
+  connect.string <- paste(
     
-    eff$lon <- str_trim(eff$lon)
-    eff$lat <- str_trim(eff$lat)
+    "(DESCRIPTION=",
     
-    eff$lon[grep("--",eff$lon)] <-
-      gsub("--","-",eff$lon[grep("--",eff$lon)])
-    eff$lon[grep(" ",eff$lon)] <-
-      gsub(" ","",eff$lon[grep(" ",eff$lon)])
-    eff$lon[!grepl("-",eff$lon)] <-
-      paste0("-",eff$lon[!grepl("-",eff$lon)])
+    "(ADDRESS=(PROTOCOL=tcp)(HOST=", host, ")(PORT=", port, "))",
     
-    eff$lat[grep(" ",eff$lat)] <-
-      gsub(" ","",eff$lat[grep(" ",eff$lat)])
-    
-    
-    samp <- eff$lon[which(is.na(unlist(lapply(eff$lon,as.numeric))))]
-    samp.idx <- which(is.na(unlist(lapply(eff$lon,as.numeric))))
-    eff$lon[samp.idx] <-
-      sapply(1:length(samp),function(i){
-        paste0(str_split_fixed(samp[i],pattern='\\.',3)[1],
-               ".",str_split_fixed(samp[i],pattern='\\.',3)[2])})
-    
-    samp <- eff$lat[which(is.na(unlist(lapply(eff$lat,as.numeric))))]
-    samp.idx <- which(is.na(unlist(lapply(eff$lat,as.numeric))))
-    eff$lat[samp.idx] <-
-      sapply(1:length(samp),function(i){
-        paste0(str_split_fixed(samp[i],pattern='\\.',3)[1],
-               ".",str_split_fixed(samp[i],pattern='\\.',3)[2])})
-    
-    eff$lon <- as.numeric(eff$lon)
-    eff$lat <- as.numeric(eff$lat)
-    
-    eff_sf <- st_as_sf(eff %>% filter(!is.na(lat)),coords=c("lon","lat"),crs="epsg:4326")
-    
-    #southern missouri watersheds
-    smws <- st_read("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/huc10_siteIDs_cond_EA.shp")
-    
-    eff_sf <- eff_sf %>% st_transform(st_crs(smws)) %>% st_intersection(smws)
-    save(eff_sf,file = "C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/MIS/effort_2020_2024_clean_locs.RData")
-  }
+    "(CONNECT_DATA=(SERVICE_NAME=", service, ")))", sep = "")
+  
+  
+  con <- dbConnect(drv, 
+                   username = "wsdata", 
+                   password = key_get("mis","wsdata"), 
+                   dbname = connect.string)
+  
+  eff=dbSendQuery(con,hours_query)
+  eff=fetch(eff)
+  eff=as.data.frame(eff)
+  dbDisconnect(con)
+
+  eff <- eff %>% rename(lat =PRPU_N_LAT,lon=PRPU_E_LONG)
+  
+  eff$lon <- str_trim(eff$lon)
+  eff$lat <- str_trim(eff$lat)
+  
+  eff$lon[grep("--",eff$lon)] <-
+    gsub("--","-",eff$lon[grep("--",eff$lon)])
+  eff$lon[grep(" ",eff$lon)] <-
+    gsub(" ","",eff$lon[grep(" ",eff$lon)])
+  eff$lon[!grepl("-",eff$lon)] <-
+    paste0("-",eff$lon[!grepl("-",eff$lon)])
+  
+  eff$lat[grep(" ",eff$lat)] <-
+    gsub(" ","",eff$lat[grep(" ",eff$lat)])
+  
+  samp <- eff$lon[which(is.na(unlist(lapply(eff$lon,as.numeric))))]
+  samp.idx <- which(is.na(unlist(lapply(eff$lon,as.numeric))))
+  eff$lon[samp.idx] <-
+    sapply(1:length(samp),function(i){
+      paste0(str_split_fixed(samp[i],pattern='\\.',3)[1],
+             ".",str_split_fixed(samp[i],pattern='\\.',3)[2])})
+  
+  samp <- eff$lat[which(is.na(unlist(lapply(eff$lat,as.numeric))))]
+  samp.idx <- which(is.na(unlist(lapply(eff$lat,as.numeric))))
+  eff$lat[samp.idx] <-
+    sapply(1:length(samp),function(i){
+      paste0(str_split_fixed(samp[i],pattern='\\.',3)[1],
+             ".",str_split_fixed(samp[i],pattern='\\.',3)[2])})
+  
+  eff$lon <- as.numeric(eff$lon)
+  eff$lat <- as.numeric(eff$lat)
+  
+  eff_sf <- st_as_sf(eff %>% filter(!is.na(lat)),coords=c("lon","lat"),crs="epsg:4326")
+  
+  #southern missouri watersheds
+  smws <- st_read(file.path(data_dir,"HUC10_MO","huc10_siteIDs_cond_EA.shp"))
+  
+  eff_sf <- eff_sf %>% st_transform(st_crs(smws)) %>% st_intersection(smws)
   
   eff <- eff_sf
-  eff <- eff %>% rename(date=WT_WORK_DATE,method=CMP_NAME)
+  eff <- eff %>% rename(Date=WT_WORK_DATE,Method=CMP_NAME)
   
   ## only use MIS effort for traps, ground shooting, systematic baiting
-  eff$method[eff$method %in% c("TRAPS, LIVE, FERAL HOGS",
+  eff$Method[eff$Method %in% c("TRAPS, LIVE, FERAL HOGS",
                                "TRAPS, BODY GRIP","TRAPS, CORRAL",
                                "TRAPS, CAGE")] <- "Trap"
-  eff$method[eff$method %in% c("FIREARMS")] <- "Ground"
-  eff$method[eff$method %in% c("HELICOPTER")] <- "Aerial"
-  # eff$method[eff$method %in% c("MONITORING CAMERA")] <- "Camera"
-  eff$method[eff$method %in% c("PREBAIT","BAIT STATION")] <- "SysBait"
-  eff <- eff %>% filter(method %in% c("Trap","Ground","Aerial","Camera","SysBait"))
-  eff$date <- as.Date(eff$date,format="%d-%b-%y")
+  eff$Method[eff$Method %in% c("FIREARMS")] <- "Ground"
+  eff$Method[eff$Method %in% c("HELICOPTER")] <- "Aerial"
+  eff$Method[eff$Method %in% c("PREBAIT","BAIT STATION")] <- "SysBait"
+  eff <- eff %>% filter(Method %in% c("Trap","Ground","Aerial","SysBait"))
+  eff$Date <- as.Date(eff$Date,format="%d-%b-%y")
   
   eff <- eff %>% filter(UOM_NAME%in%c("MINUTES","HOURS","HOBBS METER"))
   
@@ -500,7 +487,7 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   eff$time_hr[eff$UOM_NAME=="MINUTES"] <- eff$WTM_QTY[eff$UOM_NAME=="MINUTES"]/60
   
   #only hobbs meter readings for aerial ops
-  eff <- eff %>% filter(!(method=="Aerial" & UOM_NAME!="HOBBS METER"))
+  eff <- eff %>% filter(!(Method=="Aerial" & UOM_NAME!="HOBBS METER"))
   
   eff$UOM_NAME[eff$UOM_NAME=="HOBBS METER"] <- "HOURS"
   
@@ -512,12 +499,12 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
   sysbait_det_eff$eff_hrs <- rep(0,nrow(sysbait_det_eff)) 
   for(i in 1:nrow(sysbait_det_eff)){
     x <- eff[eff$SiteID==sysbait_det_eff$site_idx[i] &
-               eff$date>=sysbait_det_eff$subper_start[i] &
-               eff$date<=sysbait_det_eff$subper_end[i],]
+               eff$Date>=sysbait_det_eff$subper_start[i] &
+               eff$Date<=sysbait_det_eff$subper_end[i],]
     
     if(nrow(x)>0){
-      if(any(x$method%in%c("SysBait","Trap"))){ #systematic baiting effort 
-        sysbait_det_eff$eff_hrs[i] <- sum(subset(x,method=="SysBait" | method=="Trap")$time_hr,na.rm=T)
+      if(any(x$Method%in%c("SysBait","Trap"))){ #systematic baiting effort 
+        sysbait_det_eff$eff_hrs[i] <- sum(subset(x,Method=="SysBait" | Method=="Trap")$time_hr,na.rm=T)
       }
     }
   }
@@ -530,28 +517,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     left_join(study_site_grid %>% mutate(site_idx=as.character(SiteID)))
   sysbait_det_eff$eff_hrs_km <- sysbait_det_eff$eff_hrs/sysbait_det_eff$area_km
   
-  ##add proportion of area covered by feral swine distribution ----------------------
-  ## LAGGED a year
-  load("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/NFSP Watershed Overlap/ssg_nfsp_all.RData")
-  
-  ssg_nfsp <- rbind.data.frame(ssg_nfsp,
-                   data.frame(SiteID=1:length(unique(ssg_nfsp$SiteID)),
-                              full_ar=NA,intrsc_=NA,prp_nfs=NA,year=2024))
-  
-  ssg_nfsp$prp_nfs_lag <- NA
-  for(i in 1:nrow(ssg_nfsp)){
-    if(ssg_nfsp$year[i]>2015){
-      ssg_nfsp$prp_nfs_lag[i] <- ssg_nfsp$prp_nfs[ssg_nfsp$SiteID==ssg_nfsp$SiteID[i] &
-                                          ssg_nfsp$year==(ssg_nfsp$year[i]-1)]
-    }
-  }
-
-  sysbait_det_eff <- sysbait_det_eff %>% 
-    left_join(ssg_nfsp %>% select(SiteID,prp_nfs,prp_nfs_lag,year) %>% 
-                rename(fy=year) %>% 
-                mutate(site_idx=as.character(as.numeric(SiteID))) %>% 
-                dplyr::select(-SiteID))
-  
   sysbait_det_eff$trap_nights_km <- sysbait_det_eff$trap_nights/sysbait_det_eff$area_km
   
   # removal effort -------------------------------------------------
@@ -561,33 +526,10 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     summarise(geometry=st_union(geometry),
               area_km=as.numeric(st_area(geometry))/1e6)
   
-  # rem_day_site <-
-  #   rem_site_sf %>%  
-  #   group_by(Date=floor_date(Date,"day"),period,Method,Area_Name) %>% 
-  #   summarise(tot_rem=sum(Total),
-  #             n_events=n(),
-  #             ea_area_km=unique(ea_area_km))
-  
-  ##clip removals to systematic baiting -----------------------
-  # rem_day_site <- rem_day_site %>% 
-  #   filter(Date>=min(sysbait_det_eff$subper_start) &
-  #            Date<=max(sysbait_det_eff$subper_end))
-  
-  ##effective area and time ------------------------
-  # rem_site_ea <- rem_site_sf %>%
-  #   left_join(ao %>%
-  #               mutate(Date=as.Date(day,format="%Y-%m-%d"),
-  #                      Area_Name=as.character(Area_Name)) %>%
-  #               select(Area_Name,Date,flight_time_hr,prop_ea_flown,
-  #                      intersect_area,Method)) %>%
-  #   rename(eff_hrs=flight_time_hr,
-  #          prop_ea_impact= prop_ea_flown) %>%
-  #   mutate(effect_area_km=intersect_area/1e6)
-  
   eff_day <- eff %>% 
     st_drop_geometry() %>% 
-    group_by(Date=floor_date(date,"day"),
-             WT_AGRPROP_ID,method) %>% 
+    group_by(Date=floor_date(Date,"day"),
+             WT_AGRPROP_ID,Method) %>% 
     summarise(tot_hrs=sum(time_hr),#/length(unique(WT_EMP_ID)),
               num_events=n(),
               Area_Name=unique(Area_Nm),
@@ -612,49 +554,6 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
                                                period_dates$per_end>=eff_day$Date[i]]
   }
   
-  ### join aerial gps data -----------------------------
-  if(abund_scale=="watersheds"){
-    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ssg_clean_528m_buff.csv")
-    ao$method<-"Aerial"
-    
-    ao <- ao %>% 
-      rename(prop_site_impact=prop_site_flown) %>% 
-      mutate(Date=as.Date(Date),
-             Area_Name=as.character(Area_Name),
-             effect_area_km=as.numeric(intersect_area_km)) %>% 
-      select(SiteID,Area_Name,Date,method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
-      filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
-  } else {
-    ao <- read.csv("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Model Ready Data/fy21_24_flight_time_ea_clean_528m_buff.csv")
-    ao$method<-"Aerial"
-    
-    ao <- ao %>% 
-      rename(prop_site_impact=prop_ea_flown) %>% 
-      mutate(Date=as.Date(Date),
-             Area_Name=as.character(Area_Name),
-             effect_area_km=as.numeric(intersect_area_km)) %>% 
-      select(Area_Name,Date,method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
-      filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
-  }
-
-  ao$period <- NA
-  for(i in 1:nrow(ao)){
-    ao$period[i] <- period_dates$period[period_dates$per_start<=ao$Date[i] &
-                                          period_dates$per_end>=ao$Date[i]]
-  }
-  
-  # eff_day <- eff_day %>%
-  #   left_join(ao %>% rename(Date=Date,
-  #                           prop_ea_impact=prop_ea_flown) %>% 
-  #               mutate(Date=as.Date(Date),
-  #                      Area_Name=as.character(Area_Name),
-  #                      effect_area_km=as.numeric(intersect_area)/1e6) %>% 
-  #               select(Area_Name,Date,method,flight_time_hr,effect_area_km,prop_ea_impact))
-  
-  #remove MIS flight times and replace with GPS tracks--------------------
-  # eff_day$tot_hrs[eff_day$method=="Aerial"] <- NA
-  # eff_day$tot_hrs[eff_day$method=="Aerial"] <- eff_day$flight_time_hr[eff_day$method=="Aerial"]
-  
   #calculate area buffers for ground and trap --------------
   rem_site_trap <- rem_site_sf %>% filter(Method=="Trap") %>% 
     mutate(geometry=st_buffer(geometry,dist=sqrt(6.7e6/3.14)))
@@ -662,113 +561,258 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
     mutate(geometry=st_buffer(geometry,dist=sqrt(5e6/3.14)))
   rem_site_aerial <- rem_site_sf %>% filter(Method=="Aerial")
   rem_site_buff <- rbind(rem_site_aerial,rem_site_trap,rem_site_ground)
-  
-  # ggplot()+
-  #   geom_sf(data=study_site_grid,fill="transparent")+
-  #   geom_sf(data=ea,aes(col=Area_Name),lwd=2)+
-  #   geom_sf(data=rem_site_buff %>% 
-  #             group_by(Method,Date=floor_date(as.Date(Date),"day")) %>% 
-  #             summarise(geometry=st_union(geometry)) %>% 
-  #             filter(Date>=as.Date("2024-05-01") & 
-  #                      Date<=as.Date("2024-05-30")),aes(fill=Method),alpha=0.5)
-  # 
-  # ggplot()+
-  #   geom_sf(data=study_site_grid,fill="transparent")+
-  #   geom_sf(data=ea,aes(col=Area_Name),lwd=2)+
-  #   geom_sf(data=sys_sf %>% filter(Trap.Start.Date>=as.Date("2024-05-01") & 
-  #                                    Trap.Start.Date<=as.Date("2024-05-30") &
-  #                                    !is.na(Trap.Start.Date)))
-  
+
   #merge all trap/ground footprints to calculate effective area --------------
   if(abund_scale=="watersheds"){
-    rem_day_site <- rem_site_buff %>% 
-      group_by(Date=floor_date(as.Date(Date),"day"),period,SiteID,Method) %>% 
-      summarise(tot_rem=sum(Total),
-                # n_events=n(),
-                Area_Name=unique(Area_Name),
-                site_area_km=unique(site_area_km),
-                ea_area_km=unique(ea_area_km),
-                effect_area_km=as.numeric(st_area(st_union(geometry))/1e6)) %>% 
-      rename(method=Method) %>% 
-      filter(Date>=min(sysbait_det_eff$subper_start) &
-               Date<=max(sysbait_det_eff$subper_end)) %>% 
-      st_drop_geometry()
+    if(pass_scale=="day"){
+      rem_pass_site <- rem_site_buff %>% 
+        group_by(Date=floor_date(as.Date(Date),"day"),period,SiteID,Method) %>% 
+        summarise(tot_rem=sum(Total),
+                  # n_events=n(),
+                  Area_Name=unique(Area_Name),
+                  site_area_km=unique(site_area_km),
+                  ea_area_km=unique(ea_area_km),
+                  effect_area_km=as.numeric(st_area(st_union(geometry))/1e6)) %>% 
+        filter(Date>=min(sysbait_det_eff$subper_start) &
+                 Date<=max(sysbait_det_eff$subper_end)) %>% 
+        st_drop_geometry()
+    } else if(pass_scale=="sys"){
+      
+      period_dates <- sysbait_det_eff %>% group_by(period) %>% 
+        summarise(per_start=min(subper_start),
+                  per_end=max(subper_end))
+      
+      subper_dates <- list()
+      for(t in 1:nrow(period_dates)){
+        n<-max(unique(sysbait_det_eff$subper_end-sysbait_det_eff$subper_start)) +1
+        from <- as.Date(period_dates$per_start[t])
+        to <- as.Date(period_dates$per_end[t])
+        by = paste(n, "days")
+        subper_starts <- seq(from, to - n + 1, by = by)
+        subper_ends <- seq(from + n - 1, to, by = by)
+        last <- length(subper_starts)
+        remaining <- to - subper_ends[last]
+  
+        if(remaining != 0){
+          subper_starts <- c(subper_starts, subper_ends[last] + 1)
+          subper_ends <- c(subper_ends, to)
+        }
+        subper_dates[[t]] <- data.frame(per_start=period_dates$per_start[t],
+                   per_end=period_dates$per_end[t],
+                   subper_starts, subper_ends,
+                   subper_id = 1:length(subper_starts))
+      }
+      subper_dates <- do.call("rbind.data.frame",subper_dates)
+      period_dates <- period_dates %>% left_join(subper_dates)
+      
+      #remove singleton subperiods, combine into larger
+      period_dates$ndays <- period_dates$subper_ends-period_dates$subper_starts
+      singles <- period_dates %>% filter(ndays<=1)
+
+      for(i in 1:nrow(period_dates)){
+        for(j in 1:nrow(singles)){
+          if(period_dates$period[i]==singles$period[j] &
+             period_dates$per_end[i]>=singles$subper_starts[j]){
+            period_dates$subper_ends[period_dates$period==singles$period[j] &
+                               period_dates$subper_id==(n-1)] <- 
+              period_dates$subper_ends[period_dates$period==singles$period[j] &
+                                 period_dates$subper_id==n]
+          }
+        }
+      }
+      period_dates$ndays <- period_dates$subper_ends-period_dates$subper_starts
+      period_dates <- period_dates %>% filter(ndays>1)
+      
+      rem_site_buff$subper_id <-rem_site_buff$subper_start <- rem_site_buff$subper_end <- NA
+      for(i in 1:nrow(rem_site_buff)){
+        samp <- as.Date(rem_site_buff$Date[i])
+        per_samp <- period_dates[period_dates$subper_starts<= samp &
+                       period_dates$subper_ends>= samp,]
+        rem_site_buff$subper_id[i] <- per_samp$subper_id
+        rem_site_buff$subper_start[i] <- per_samp$subper_starts
+        rem_site_buff$subper_end[i] <- per_samp$subper_ends
+      }
+      rem_site_buff$subper_end <- as.Date(rem_site_buff$subper_end)
+      rem_site_buff$subper_start <- as.Date(rem_site_buff$subper_start)
+      
+      rem_pass_site <- rem_site_buff %>% 
+        group_by(subper_id,period,SiteID,Method,subper_start,subper_end) %>% 
+        summarise(tot_rem=sum(Total),
+                  Area_Name=unique(Area_Name),
+                  site_area_km=unique(site_area_km),
+                  ea_area_km=unique(ea_area_km),
+                  effect_area_km=as.numeric(st_area(st_union(geometry))/1e6)) %>% 
+        filter(subper_start>=min(sysbait_det_eff$subper_start) &
+                 subper_end<=max(sysbait_det_eff$subper_end)) %>% 
+        st_drop_geometry()
+    }
+    
   } else {
-    rem_day_site <- rem_site_buff %>% 
+    rem_pass_site <- rem_site_buff %>% 
       group_by(Date=floor_date(as.Date(Date),"day"),period,Area_Name,Method) %>% 
       summarise(tot_rem=sum(Total),
                 # n_events=n(),
                 ea_area_km=unique(ea_area_km),
                 effect_area_km=as.numeric(st_area(st_union(geometry))/1e6)) %>% 
-      rename(method=Method) %>% 
       filter(Date>=min(sysbait_det_eff$subper_start) &
                Date<=max(sysbait_det_eff$subper_end)) %>% 
       st_drop_geometry()
   }
-  
-  rem_day_site$effect_area_km[rem_day_site$method=="Aerial"] <- NA
+
+  rem_pass_site$effect_area_km[rem_pass_site$Method=="Aerial"] <- NA
   
   ##clip systematic baiting to removals --------------------
   sysbait_det_eff <-sysbait_det_eff %>% 
-    filter(subper_start>=min(rem_day_site$Date) &
-             subper_end<=max(rem_day_site$Date))%>% 
+    filter(subper_start>=min(rem_pass_site$subper_start) &
+             subper_end<=max(rem_pass_site$subper_end)) %>% 
     st_drop_geometry() %>% 
     select(-c(season,month,n)) %>%
     rename(site_area_km=area_km)
   
   #merge with aerial ops track data ----------------
   if(abund_scale=="watersheds"){
-    rem_day_site <- rem_day_site %>% 
-      full_join(ao,by=c("Date","period","method","SiteID","Area_Name")) %>% 
-      rename(tot_hrs=flight_time_hr)
-  } else {
-    rem_day_site <- rem_day_site %>% 
-      full_join(ao,by=c("Date","period","method","Area_Name")) %>% 
-      rename(tot_hrs=flight_time_hr)
-  }
-  
-  for(i in 1:nrow(rem_day_site)){
-    if(is.na(rem_day_site$effect_area_km.x[i])){
-      rem_day_site$effect_area_km.x[i] <-  rem_day_site$effect_area_km.y[i]
+    ao <- read.csv(file.path(data_dir,paste0("fy21_",end_fy,"_flight_time_ssg_clean_528m_buff.csv")))
+    ao$Method<-"Aerial"
+    
+    ao <- ao %>% 
+      rename(prop_site_impact=prop_site_flown) %>% 
+      mutate(Date=as.Date(Date),
+             Area_Name=as.character(Area_Name),
+             effect_area_km=as.numeric(intersect_area_km)) %>% 
+      select(SiteID,Area_Name,Date,Method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
+      filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
+    
+    ao$period <- NA
+    for(i in 1:nrow(ao)){
+      ao$period[i] <- unique(period_dates$period[period_dates$per_start<=ao$Date[i] &
+                                            period_dates$per_end>=ao$Date[i]])
     }
+    
+    if(pass_scale=="sys"){
+
+      ao$subper_id <-ao$subper_start <- ao$subper_end <- NA
+      for(i in 1:nrow(ao)){
+        samp <- as.Date(ao$Date[i])
+        per_samp <- period_dates[period_dates$subper_starts<= samp &
+                                   period_dates$subper_ends>= samp,]
+        ao$subper_id[i] <- per_samp$subper_id
+        ao$subper_start[i] <- per_samp$subper_starts
+        ao$subper_end[i] <- per_samp$subper_ends
+      }
+      
+      ao <- ao %>% group_by(SiteID,Area_Name,Method,period,subper_id,subper_start,subper_end) %>% 
+        summarise(flight_time_hr=sum(flight_time_hr,na.rm=T),
+                  effect_area_km=sum(effect_area_km,na.rm=T)) %>% 
+        mutate(subper_start=as.Date(subper_start),
+               subper_end=as.Date(subper_end)) %>% 
+        left_join(study_site_grid %>% st_drop_geometry()) %>% 
+        mutate(prop_site_impact=effect_area_km/area_km)
+    }
+
+  } else {
+    ao <-read.csv(file.path(data_dir,paste0("fy21_",end_fy,"_flight_time_ssg_ea_clean_528m_buff.csv")))
+    ao$Method<-"Aerial"
+    
+    ao <- ao %>% 
+      rename(prop_site_impact=prop_ea_flown) %>% 
+      mutate(Date=as.Date(Date),
+             Area_Name=as.character(Area_Name),
+             effect_area_km=as.numeric(intersect_area_km)) %>% 
+      select(Area_Name,Date,Method,flight_time_hr,effect_area_km,prop_site_impact) %>% 
+      filter(Date<=as.Date(max(sysbait_det_eff$subper_end)))
   }
 
   
-  rem_day_site <- rem_day_site %>% 
+  if(abund_scale=="watersheds"){
+    if(pass_scale=="day"){
+      rem_pass_site <- rem_pass_site %>% 
+        full_join(ao,by=c("Date","period","Method","SiteID","Area_Name")) %>% 
+        rename(tot_hrs=flight_time_hr)
+      
+    } else if(pass_scale=="sys"){
+      rem_pass_site <- rem_pass_site %>% 
+        full_join(ao,by=c("subper_id","subper_start","subper_end","period","Method","SiteID","Area_Name")) %>% 
+        rename(tot_hrs=flight_time_hr)
+    }
+
+  } else {
+    rem_pass_site <- rem_pass_site %>% 
+      full_join(ao,by=c("Date","period","Method","Area_Name")) %>% 
+      rename(tot_hrs=flight_time_hr)
+  }
+  
+  for(i in 1:nrow(rem_pass_site)){
+    if(is.na(rem_pass_site$effect_area_km.x[i])){
+      rem_pass_site$effect_area_km.x[i] <-  rem_pass_site$effect_area_km.y[i]
+    }
+  }
+  
+  rem_pass_site <- rem_pass_site %>% 
     filter(!is.na(effect_area_km.x)) %>% 
     rename(effect_area_km=effect_area_km.x) %>% 
     select(-effect_area_km.y) %>% 
     st_drop_geometry()
   
-  rem_day_site$method[rem_day_site$method=="Ground Shoot"] <- "Ground"
+  rem_pass_site$Method[rem_pass_site$Method=="Ground Shoot"] <- "Ground"
   
   #remove systematic baiting ---------------
-  eff_day <- eff_day %>% filter(method!="SysBait")
+  eff_day <- eff_day %>% filter(Method!="SysBait")
   
   # summarise by site from property  -------------------
   if(abund_scale=="watersheds"){
-    eff_day_site <- eff_day %>% 
-      group_by(Date,period,method,SiteID) %>% 
-      summarise(tot_hrs=sum(tot_hrs),
-                num_events=sum(num_events)) 
+    if(pass_scale=="day"){
+      eff_pass_site <- eff_day %>% 
+        group_by(Date,period,Method,SiteID) %>% 
+        summarise(tot_hrs=sum(tot_hrs),
+                  num_events=sum(num_events)) 
+    } else if(pass_scale=="sys"){
+      
+      eff_day$subper_id <-eff_day$subper_start <- eff_day$subper_end <- NA
+      for(i in 1:nrow(eff_day)){
+        samp <- as.Date(eff_day$Date[i])
+        per_samp <- period_dates[period_dates$subper_starts<= samp &
+                                   period_dates$subper_ends>= samp,]
+        eff_day$subper_id[i] <- per_samp$subper_id
+        eff_day$subper_start[i] <- per_samp$subper_starts
+        eff_day$subper_end[i] <- per_samp$subper_ends
+      }
+      
+      eff_pass_site <- eff_day %>% 
+        group_by(subper_id,subper_start,subper_end,period,Method,SiteID) %>% 
+        summarise(tot_hrs=sum(tot_hrs),
+                  num_events=sum(num_events)) %>% 
+        mutate(subper_start=as.Date(subper_start),
+               subper_end=as.Date(subper_end))
+    }
+
   } else {
-    eff_day_site <- eff_day %>% 
-      group_by(Date,period,method,Area_Name) %>% 
+    eff_pass_site <- eff_day %>% 
+      group_by(Date,period,Method,Area_Name) %>% 
       summarise(tot_hrs=sum(tot_hrs),
                 num_events=sum(num_events)) 
   }
 
   #merge removal and effort ------------
   if(abund_scale=="watersheds"){
-    rem_eff_site <- eff_day_site %>%
-      filter(Date>=min(rem_day_site$Date) & 
-               Date<=max(rem_day_site$Date)) %>% 
-      full_join(rem_day_site,by=c("Date","period","method","SiteID"))
+    if(pass_scale=="day"){
+      rem_eff_site <- eff_pass_site %>%
+        filter(Date>=min(rem_pass_site$Date) & 
+                 Date<=max(rem_pass_site$Date)) %>% 
+        full_join(rem_pass_site,by=c("Date","period","Method","SiteID"))
+      
+    } else if(pass_scale=="sys"){
+      rem_eff_site <- eff_pass_site %>%
+        filter(subper_start>=min(rem_pass_site$subper_start) & 
+                 subper_end<=max(rem_pass_site$subper_end)) %>% 
+        full_join(rem_pass_site,by=c("subper_id","subper_start","subper_end","period","Method","SiteID"))
+      
+    }
+
   } else {
-    rem_eff_site <- eff_day_site %>%
-      filter(Date>=min(rem_day_site$Date) & 
-               Date<=max(rem_day_site$Date)) %>% 
-      full_join(rem_day_site,by=c("Date","period","method","Area_Name"))
+    rem_eff_site <- eff_pass_site %>%
+      filter(Date>=min(rem_pass_site$Date) & 
+               Date<=max(rem_pass_site$Date)) %>% 
+      full_join(rem_pass_site,by=c("Date","period","Method","Area_Name"))
   }
   
   for(i in 1:nrow(rem_eff_site)){
@@ -815,108 +859,67 @@ grid_effort <- function(sysbait_det_eff,#output from grid_sysbaittake,by subperi
 
   #remove observations with no area estimate
   rem_eff_site <- rem_eff_site %>% filter(!is.na(effect_area_km))
-  rem_eff_site %>% filter(tot_hrs>24) %>% as.data.frame()
-  #remove effort observations over 24 hours per day
-  if(abund_scale=="watersheds"){
-    rem_eff_site <- rem_eff_site %>% 
-      group_by(period,method,SiteID) %>% 
-      mutate(pass_idx=1:n())# %>% 
-      # filter(tot_hrs>24)
-  } else {
-    rem_eff_site <- rem_eff_site %>% 
-      group_by(period,method,Area_Name) %>% 
-      mutate(pass_idx=1:n()) #%>% 
-      # filter(tot_hrs<24)
+  
+
+  if(pass_scale=="day"){
+    #remove effort observations over 24 hours per day
+    rem_eff_site %>% filter(tot_hrs>24) %>% as.data.frame()
   }
   
+  #add pass idx
+  if(abund_scale=="watersheds"){
+    rem_eff_site <- rem_eff_site %>% 
+      group_by(period,Method,SiteID) %>% 
+      mutate(pass_idx=1:n())# %>% 
+    # filter(tot_hrs>24)
+  } else {
+    rem_eff_site <- rem_eff_site %>% 
+      group_by(period,Method,Area_Name) %>% 
+      mutate(pass_idx=1:n()) #%>% 
+    # filter(tot_hrs<24)
+  }
+
   #calculate effective hours spent removing per area
   rem_eff_site$effect_area_hrs <- rem_eff_site$tot_hrs/rem_eff_site$effect_area_km
   
+  list(sysbait_det_eff=sysbait_det_eff,
+       rem_eff_site=rem_eff_site)
+  
+}
+
+grid_covs <- function(occ_scale,
+                      abund_scale,
+                      sysbait_det_eff,
+                      study_site_grid,
+                      data_dir
+                      ){
+  
   #grid landscape covariates to watershed -----------------------------
-  if(file.exists(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",occ_scale,".RData"))){
-    load(paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",occ_scale,".RData"))
+  if(file.exists(file.path(data_dir,paste0("nlcd_",occ_scale,".rds")))){
+    nlcd_siteid <- readRDS(file.path(data_dir,paste0("nlcd_",occ_scale,".rds")))
   } else {
-    nlcd_siteid
-    library(terra)
-    nlcd <- rast("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/NLCD_MO/NLCD_2019_Land_Cover_L48_20210604_jj2pnCpncP4xHk8rj4R5.tiff")
-    study_site <- st_union(study_site_grid)
-    
-    study_site_v <- st_transform(study_site,crs(nlcd))
-    study_site_v <- vect(study_site_v)
-    nlcd.crop <- crop(nlcd,study_site_v)
-    
-    nlcd.crop <- project(nlcd.crop,"epsg:3601")
-    nlcd.crop[is.nan(nlcd.crop)] <- 0
-    
-    nlcd.water <- nlcd.crop
-    values(nlcd.water)[values(nlcd.water)==11] <- 1
-    values(nlcd.water)[values(nlcd.water)!=1] <- 0
-    
-    study_site_grid <- st_transform(study_site_grid,"epsg:3601")
-    # plot(study_site_grid)
-    water <- terra::extract(nlcd.water,study_site_grid,fun=mean,na.rm=T) %>% 
-      rename(SiteID=ID,water=Layer_1) %>% 
-      right_join(study_site_grid,by="SiteID") %>% 
-      st_as_sf()# %>% select(-c(neighbors)) 
-    
-    st_write(water,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/so_mo_water_nlcd2019_",occ_scale,".shp"),append=F)
-    
-    nlcd.developed <- nlcd.crop
-    values(nlcd.developed)[values(nlcd.developed)%in%c(21:24)] <- 1
-    values(nlcd.developed)[values(nlcd.developed)!=1] <- 0
-    
-    developed <- terra::extract(nlcd.developed,
-                                study_site_grid,fun=mean) %>% 
-      rename(SiteID=ID,developed=Layer_1) %>% 
-      right_join(study_site_grid,by="SiteID") %>% 
-      st_as_sf()# %>% select(-c(neighbors)) 
-    # select(-c(neighbors,FID,SITE,geometry))
-    st_write(developed,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/so_mo_developed_nlcd2019_",occ_scale,".shp"),append=F)
-    
-    nlcd.forest <- nlcd.crop
-    values(nlcd.forest)[values(nlcd.forest)%in%c(41:43)] <- 1
-    values(nlcd.forest)[values(nlcd.forest)!=1] <- 0
-    
-    forest <- terra::extract(nlcd.forest,study_site_grid,fun=mean) %>%
-      rename(SiteID=ID,forest=Layer_1) %>%
-      right_join(study_site_grid,by="SiteID") %>%
-      st_as_sf() #%>% select(-c(neighbors)) 
-    st_write(forest,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/so_mo_forest_nlcd2019_",occ_scale,".shp"),append=F)
-    
-    nlcd.wetland <- nlcd.crop
-    values(nlcd.wetland)[values(nlcd.wetland)%in%c(90,95)] <- 1
-    values(nlcd.wetland)[values(nlcd.wetland)!=1] <- 0
-    
-    wetland <- terra::extract(nlcd.wetland,study_site_grid,fun=mean) %>% 
-      rename(SiteID=ID,wetland=Layer_1) %>% 
-      right_join(study_site_grid,by="SiteID") %>% 
-      # select(-c(neighbors,FID,SITE,geometry))
-      st_as_sf() #%>% select(-c(neighbors)) 
-    st_write(wetland,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/so_mo_wetland_nlcd2019_",occ_scale,".shp"),append=F)
-    
-    nlcd.agri <- nlcd.crop
-    values(nlcd.agri)[values(nlcd.agri)%in%c(81,82)] <- 1
-    values(nlcd.agri)[values(nlcd.agri)!=1] <- 0
-    
-    agri <- terra::extract(nlcd.agri,study_site_grid,fun=mean) %>% 
-      rename(SiteID=ID,agri=Layer_1) %>% 
-      right_join(study_site_grid,by="SiteID") %>% 
-      st_as_sf() #%>% select(-c(neighbors)) 
-    st_write(agri,paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/GIS Data/Missouri/so_mo_agri_nlcd2019_",occ_scale,".shp"),append=F)
-    
-    nlcd_siteid <- full_join(water %>% st_drop_geometry(),
-                             developed%>% st_drop_geometry()) %>% 
-      full_join(agri%>% st_drop_geometry()) %>% 
-      full_join(wetland%>% st_drop_geometry()) %>% 
-      full_join(forest%>% st_drop_geometry()) %>%
-      full_join(study_site_grid) %>% 
-      st_drop_geometry()#%>% dplyr::select(-neighbors)
-    
-    save(nlcd_siteid,file=paste0("C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Landscape Covariates/nlcd_",occ_scale,".RData"))
+    #TODO source extract_nlcd_watersheds
+  }
+
+  #oak cover -----------
+  if(file.exists(file.path(data_dir,"oak_siteid.rds"))){
+    oak_siteid <- readRDS(file.path(data_dir,"oak_siteid.rds"))
+  } else {
+    #TODO: source extract_oak_watersheds
+  }
+   
+  ##add proportion of area covered by feral swine distribution ----------------------
+  ## LAGGED a year
+  if(file.exists(file.path(data_dir,paste0("ssg_nfsp_2015_",
+                        max(year(sysbait_det_eff$subper_end)),".rds")))){
+    nfsp_siteid <- readRDS(file.path(data_dir,paste0("ssg_nfsp_2015_",
+                                                  max(year(sysbait_det_eff$subper_end)),".rds")))
+  } else {
+    #TODO source watershed_nfsp_overlap.R to update years
   }
   
   list(nlcd_siteid=nlcd_siteid,
-       sysbait_det_eff=sysbait_det_eff,
-       rem_eff_site=rem_eff_site)
+       oak_siteid=oak_siteid,
+       nfsp_siteid=nfsp_siteid
+  )
 }
-
