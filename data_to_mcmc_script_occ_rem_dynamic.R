@@ -24,10 +24,7 @@ occ_scale <- "watersheds"
 abund_scale <- "watersheds"
 pass_scale <- "sys" 
 period <- "season"
-study_site_grid <- st_read(file.path(input_dir,
-                                     "HUC10_MO","huc10_siteIDs_cond_EA.shp")) %>% 
-  rename(elim_area_idx=elm_r_d,
-         Area_Name=Area_Nm)
+
 
 if(file.exists(file.path(output_dir,"mo_sysbait_rem_2020-10-01_2024-12-31.RData"))){
   load(file.path(output_dir,"mo_sysbait_rem_2020-10-01_2024-12-31.RData"))

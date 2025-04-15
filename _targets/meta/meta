@@ -1,0 +1,138 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|repository|iteration|parent|children|seconds|warnings|error
+sysbait_raw|stem|b3d2265bcf9ee264|a52993bf2b6e2a5b|6199f7fd75fb5e5b|112134768||t20167.8149948261s|s354016b|354016|rds|local|vector|||1.7|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+take_raw|stem|dc32e428ea770b38|f3adb97c11f7d662|bf9975c97af2992a|-760894788||t20167.8206119141s|s164861b|164861|rds|local|vector|||1.33|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+read_take_raw|function|b415ae3282107082|||||||||||||||
+read_sysbait_raw|function|e2775d9def0a7a18|||||||||||||||
+sysbait|stem|840f3fcdddf99b23|7902e9fa67b1d239|e7e8814f70d0f5a9|1752601907||t20167.8823351043s|s20105b|20105|rds|local|vector|||28.07|NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+take|stem|22dd2d6da8350c97|c4836f317a1f06e3|1805e6a498293fd4|1703892838||t20167.9128219806s|s73392b|73392|rds|local|vector|||4.85|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+raw_take_oct_dec24|stem|6a5b1af21e6eb4cf|d81df9a6a718f705|2b6a7821e19fbb84|-1878054473|./Data/raw/take/MOFeralHogData_Oct24_Dec24.gdb|t20166.7141521529s|s735877b|735877|file|local|vector|||0||
+nlcd_extract|function|5981e01cb494c0a2|||||||||||||||
+extact_oak|function|4e5b308d4374306c|||||||||||||||
+extract_nfsp|function|15b252d581622806|||||||||||||||
+nfsp_siteid|stem|1dc9e3ff8a0ff1d5|c1ec82b6d74d081d|21ca78ff502f548c|-1420209718|./Data/input/ssg_nfsp.rds|t20166.8512570071s||23948|file|local|vector|||0.01||... used in an incorrect context
+sec|stem|90248fd7a0b439a5|9a127e833a2310ca|f3b244cc9f2f67eb|-846876339|./data/input/MO_Public_Land_Survey_System/MO_Public_Land_Survey_System.shp|t19371.1642361111s|s11821196b|11821196|file|local|vector|||0||
+raw_take_sep20_dec22|stem|69967e271a75f90b|e9677bc969326dfe|f602c2449499ec73|-923213978|./data/raw/take/Take_Sept2020_Dec2022.csv|t19466.879212963s|s518044b|518044|file|local|vector|||0||
+plots_trace|stem|b8c51370a25ddf0e|155eb49b9ecb98b9|2352a0dcf91b2bbb|1836073953||t20172.66334745s|s91b|91|rds|local|vector|||2.16||
+avail_function|stem|e7a4bdd60d2339cc|1529a0bc1b7e8303|eb6c0194533046d4|1112000713||t20174.6230210479s|s442920b|442920|rds|local|vector|||4.26|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_12bc5384b2aba9ce|branch||7b2377a0c6972a6c|45bfb3daafa741e6|1751065800||t20174.8992042537s||0|rds|local|vector|samples||0.828|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|data must be of a vector type, was NULL
+model_inputs_list|function|37cf789146874b91|||||||||||||||
+model_inputs|stem|f746baf5d6dce84e|a681ab62945d6a97|b698b53ac36adcfd|941491278||t20174.9016985561s|s83112226b|83112226|rds|local|vector|||4.016|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+fit_zi_rem_occ|function|a7701f5303bfd1f9|||||||||||||||
+mod_covs|stem|4455260e812493fb|384bdc500f3b5ced|a829b46ec3455de2|2068045908||t20174.9442445426s|s4447072b|4447072|rds|local|vector|||4.766|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+model_data_prep|function|e22f03e84a363ede|||||||||||||||
+Cmod|stem|d797b0500a6e8863|00524d29964667e7|e37e4abdf3bde90d|763475091||t20180.736587621s|s169789450b|169789450|rds|local|vector|||307.922|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+compile_zibinom_mod|function|51962201fc786ee8|||||||||||||||
+effort_query|stem|66fe7ccdaa165410|da20f91985f077f6|284967e155c76a81|1247403759||t20167.8834894562s|s454b|454|rds|local|vector|||1.42|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+raw_sys_sep20_dec22|stem|604d6e69f3a74313|95a886f4513ab11b|f602c2449499ec73|267205692|./data/raw/sysbait/Ops_Sept2020_Dec2022.csv|t19466.8784646496s|s878809b|878809|file|local|vector|||0||
+raw_take_jan23_jun23|stem|6d67de245d75ca6c|05650d679b9fbbd0|f602c2449499ec73|-1266528096|./data/raw/take/Take_Jan2023_Jun2023.csv|t19558.7146660145s|s117884b|117884|file|local|vector|||0||
+raw_take_jul23_sep24|stem|d1916e7f69952525|2f27a7705bb4a89a|f602c2449499ec73|1096287220|./data/raw/take/Take_July23_Sept24.csv|t20000.7381876974s|s273509b|273509|file|local|vector|||0||
+raw_take_oct24_dec24|stem|6a5b1af21e6eb4cf|d81df9a6a718f705|f602c2449499ec73|1491486896|./data/raw/take/MOFeralHogData_Oct24_Dec24.gdb|t20167.9332918219s|s24576b|24576|file|local|vector|||0||
+avail_fun|stem|18c57b2712d9fcf6|1529a0bc1b7e8303|eb6c0194533046d4|-1919449248||t20174.7002455567s|s487935b|487935|rds|local|vector|||4.02|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+chain_idx|stem|c0c331d1fd2beeb6|2c68bb5885d0b0ad|dd79586292057c77|2014838078||t20174.9138589355s|s99b|99|rds|local|vector||chain_idx_6e95f3b2b5476d92*chain_idx_b3a2147ad240fae3*chain_idx_f5968f8186dadba0|4.703|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+ssg|stem|8b1ae8bbc507becc|9c89da6f1bbb0e9c|f3b244cc9f2f67eb|2141844174|./data/input/HUC10_MO/huc10_siteIDs_cond_EA.shp|t19930.6165209446s|s10844548b|10844548|file|local|vector|||0||
+ssg_formatted|stem|26895e240cc66a53|f1a313956926f406|bc6c05ae3a95681e|-1247696189||t20167.7530108341s|s9037886b|9037886|rds|local|vector|||0.19||
+elim_areas|stem|d26fb17baa877f6c|39ddeaf3d878cbbf|7dd5a74576b3f38a|-2060295955||t20174.6530251231s|s2251283b|2251283|rds|local|vector|||1.35||
+sec_formatted|stem|bf238d27f3ce8dee|aeca070f1548dffc|939baf76eca36119|-443577044||t20167.8043322761s|s13225790b|13225790|rds|local|vector|||15.57|attribute variables are assumed to be spatially constant throughout all geometries|
+effort_raw|stem|fc3e783ba51370ee|439101a4d15f0d94|45f33b11c4f513e7|1777935539||t20167.8405421213s|s63137b|63137|rds|local|vector|||9.85|NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion|
+lat_long_siteid|stem|a0134f8a71929256|d1596001c7eb6613|927ec40b20b9aeef|955924579||t20168.7697805847s|s9044499b|9044499|rds|local|vector|||0.11|st_centroid assumes attributes are constant over geometries. st_centroid assumes attributes are constant over geometries|
+raw_ao_fy21|stem|c4a496aa3b0f1975|5a5349fa46224e68|f602c2449499ec73|-274854071|./data/raw/aerial_ops_tracks/FY2021 AERIAL OPS TRACK DATA.csv|t19929.804180277s|s2048269b|2048269|file|local|vector|||0||
+raw_ao_fy22|stem|0f088a5b20341b3c|51b54d9ad899625f|f602c2449499ec73|-1785396488|./data/raw/aerial_ops_tracks/FY2022 MO AERIAL OPS TRACK DATA.csv|t19926.5184486184s|s20905058b|20905058|file|local|vector|||0||
+raw_sys_jan23_jun23|stem|ce11c24dd5fcb764|e49d6606e54fb256|f602c2449499ec73|49870114|./data/raw/sysbait/Ops_Jan2023_Jun2023.csv|t19558.714964767s|s593880b|593880|file|local|vector|||0||
+raw_ao_fy23|stem|844611946a89b209|bcf2265a906ff5b5|f602c2449499ec73|1868191813|./data/raw/aerial_ops_tracks/FY2023 MO AERIAL OPS TRACK DATA.csv|t19926.5184339596s|s30080563b|30080563|file|local|vector|||0||
+raw_ao_fy24|stem|a83c33bf2b2d1747|bb2607ccd9573407|f602c2449499ec73|1835002036|./data/raw/aerial_ops_tracks/FY24_MOFlightTracks.gdb|t20000.6960665041s|s24576b|24576|file|local|vector|||0||
+oak_raster|stem|e77fdbf2da542e62|2b1b093fc95e01cc|f602c2449499ec73|1406068612|./data/raw/gap2011_mo/gap_2011_mo_oak.tif|t20124.9880287165s|s30556798b|30556798|file|local|vector|||6.72|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+oak_siteid|stem|0312f5bc2a61a048|fa309811fe5427d6|29d4fa559388a1da|871885875||t20168.769772722s|s7029b|7029|rds|local|vector|||23.81||
+raw_take_jul23_nov23|stem|e99d6bcb6a119fcd|6f3f8f58cc2b1715|f602c2449499ec73|394751674|./data/raw/take/Take_Jul2023_Nov2023.csv|t19674.8739269412s|s50388b|50388|file|local|vector|||0||
+take_clean|stem|564d766118f7dee6|538af21c13d72b4e|ae99befaf7e29182|-311836466||t20167.9359241966s|s164363b|164363|rds|local|vector|||1.95|NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries|
+aerial_ops_tracks|stem|a85c40b836afa1b3|2cabd4ce102c1b5d|60399dcc5e78f5df|2103792741||t20167.9087323742s|s18927b|18927|rds|local|vector|||235.29|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+raw_sys_jul23_sep24|stem|98298372e4795c3f|fce66f38ebb3c6cc|f602c2449499ec73|1374515935|./data/raw/sysbait/Ops_July23_Sept24.csv|t20000.757219954s|s2230366b|2230366|file|local|vector|||0||
+nlcd_raster|stem|5d1e86bb1f8b62e5|205055bef128004b|f602c2449499ec73|1021055253|./data/raw/nlcd/NLCD_2019_Land_Cover_L48_20210604_jj2pnCpncP4xHk8rj4R5.tiff|t19552.9544272181s|s425254651b|425254651|file|local|vector|||0||
+nlcd_siteid|stem|e63e1d3bb2fb440a|038039178674b0ca|2e2052a85eca8538|827838860||t20168.7851514226s|s9360397b|9360397|rds|local|vector|||1327.61||
+raw_sys_jul23_nov23|stem|ea875cc7435339f8|0428b4041279d1d8|f602c2449499ec73|942608599|./data/raw/sysbait/Ops_Jul2023_Nov2023.csv|t19674.8741084231s|s352980b|352980|file|local|vector|||0||
+raw_sys_oct24_dec24|stem|d123ec176bab0209|5b9e4d02d11cda9b|f602c2449499ec73|1460542044|./data/raw/sysbait/Ops_Oct24_Dec24.csv|t20166.6488327081s|s395034b|395034|file|local|vector|||0||
+sysbait_clean|stem|b3d2265bcf9ee264|d0ae833e6d31425d|b6d19af40097ce66|395096418||t20167.9224905877s|s354016b|354016|rds|local|vector|||0.73|There was 1 warning in mutate.ℹ In argument SounderSize  as.integerSounderSize.Caused by warning NAs introduced by coercion|
+sysbait_grid|stem|d3f221ee2cc8581f|92384b2f48ee9374|9ea74a15d9c028e6|-1270728549||t20174.6906474209s|s28953b|28953|rds|local|vector|||32.91|NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+sysbait_effort|stem|608e4e7b8ad8a936|5a161c47fe2f98cb|9c013b958a2f80a3|-1980835277||t20174.692609354s|s1535936979b|1535936979|rds|local|vector|||79.5||
+dat_occ|stem|ec1550622e6d09b8|26fa2f713ac934ea|5f57f455ce5372f2|1335377113||t20174.6926256944s|s30056b|30056|rds|local|vector|||0.73||
+take_grid|stem|066fdb20db0b117f|d6ea711d68235a89|9dc6810cade05926|-728214767||t20174.690698591s|s94142b|94142|rds|local|vector|||4.37|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+take_effort|stem|5f0e2c8a1a130159|5462e351c17494c4|5072de900d9ed9ed|1078299164||t20174.6929917439s|s47109b|47109|rds|local|vector|||31.6||
+dat_rem|stem|90836953d504ad8c|43f3363eb042e882|d6d86bfedba555a7|-938537672||t20174.7275066013s|s61093b|61093|rds|local|vector|||0.12||
+site_idx_lookup|stem|dfe5f9e38a3373f8|49fae7a4a0e83c1f|b13b420ca52ddbb4|317771321||t20174.7275069916s|s490b|490|rds|local|vector|||0||
+local_controller|object|0f4c2adae3a2e230|||||||||||||||
+samples_9838bd590d9a6a49|branch|eb753f7b56acb0f3|e194321a4c92266b|119b42a8d4e72f7d|-1203821932||t20188.7232568186s|s201257568b|201257568|rds|local|vector|samples||1707.125|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_6a7beae6237c8c08|branch|52e92744c1c9500b|e194321a4c92266b|119b42a8d4e72f7d|763494999||t20188.7234575286s|s201720047b|201720047|rds|local|vector|samples||1719.265|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_34f0237c314b2aba|branch|ca23d683fd75fde0|e194321a4c92266b|119b42a8d4e72f7d|341238872||t20188.723713958s|s200709936b|200709936|rds|local|vector|samples||1750.015|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples|pattern|455b4fc950939798|e194321a4c92266b||1609165135||||603687551|rds|local|vector||samples_9838bd590d9a6a49*samples_6a7beae6237c8c08*samples_34f0237c314b2aba|5176.405||
+abundance_plots|stem|ea71f761b816a855|ff8933739bfd81d4|674e4934181ac01f|1784815996||t20188.7788145326s|s262162b|262162|rds|local|vector|||4752.437|NAs produced|
+pabs_plots|stem|f18134780f9034c2|937ca496bfd89c6f|85d3f7739dc55cfa|-1370887671||t20188.7870946137s|s59266189b|59266189|rds|local|vector|||705.187|attribute variables are assumed to be spatially constant throughout all geometries|
+det_plot|stem|4e0f2b4dff285a48|6c6cd7991be13dba|f3adb012ab29d57b|-2113591127||t20188.7871655445s|s1180b|1180|rds|local|vector|||0.469||
+removal_prob_plots|stem|0ef522acf4223837|482009c2e746f295|be82674f356f2108|1290114349||t20188.7881209176s|s29727b|29727|rds|local|vector|||50.5||
+wi_mod_val|stem|9650e109db2bea43|dd822a6ecd435a6d|70b8c4d3b225f64a|-38965719||t20188.7881211028s|s332b|332|rds|local|vector|||48.203|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+elim_samp_plot|stem|32d46c7100b54b78|9811939eabc6aaaa|d88d9a826bae9092|-350873110||t20188.7886737145s|s552b|552|rds|local|vector|||17.938||
+trace_plots|stem|25dae4ac1c29aa28|f0ced7324a1131fa|f8cdc1e3645027be|-1890721789||t20188.7886739807s|s3177b|3177|rds|local|vector|||3.765|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+.Random.seed|object|962a56adc28c6b6c|||||||||||||||
+clean_take|function|0b16d34b4f0b0191|||||||||||||||
+grid_sysbait_effort|function|d89dde2238f15bb9|||||||||||||||
+pull_effort_mis|function|fd1ef91e0be8a83f|||||||||||||||
+model_validation|function|c3ec20cd56c32525|||||||||||||||
+format_ssg|function|1bef4d8d7443d6cb|||||||||||||||
+plot_removal_prob|function|53949fd4242e0f02|||||||||||||||
+occ_data_prep|function|6de27b789625e3af|||||||||||||||
+plot_trace|function|3e619ae9cf456b61|||||||||||||||
+out_dir|object|6788352ad7f4224f|||||||||||||||
+extract_nlcd|function|e834f7ff1f0c9cd1|||||||||||||||
+mis_effort_query|function|f8e581c92c83eb9f|||||||||||||||
+input_dir|object|f41a9421041c5b2a|||||||||||||||
+fit_zibinom_mod|function|f99ab3fc08051fe8|||||||||||||||
+grid_take_effort|function|080de17258d0901d|||||||||||||||
+make_chain_idx|function|1cda52a08f9f6cf2|||||||||||||||
+raw_dir|object|5088448f63d62dee|||||||||||||||
+plot_abundance|function|10b7768e818feae3|||||||||||||||
+extract_oak|function|fe2ccf5c34ae520c|||||||||||||||
+align_sites|function|c1d747c94bef3587|||||||||||||||
+plot_elim_samp|function|e6239313a5fbec94|||||||||||||||
+grid_sysbait|function|5ab1f93036685ca2|||||||||||||||
+mcmc_controller|object|38391f4600c42f16|||||||||||||||
+plot_pabs|function|31fda0b1e643fa8a|||||||||||||||
+nimble_fun_avail|function|f1fa1236ced46e80|||||||||||||||
+make_elim_areas|function|2e4f9ff3740cf2d7|||||||||||||||
+rem_data_prep|function|c81e7ecdf32c53f7|||||||||||||||
+clean_aerial_tracks|function|6131c6c559b08670|||||||||||||||
+site_lat_longs|function|0bd46459943aa91c|||||||||||||||
+grid_removals|function|b455c3da7bad3c4a|||||||||||||||
+plot_det|function|5881fbc809c2bb86|||||||||||||||
+clean_sysbait|function|df7f38b3fc5f2815|||||||||||||||
+format_sec|function|eb8856a119d2191f|||||||||||||||
+.Random.seed|object|0a51440adfec55fb
+clean_take|function|0b16d34b4f0b0191
+grid_sysbait_effort|function|d89dde2238f15bb9
+pull_effort_mis|function|fd1ef91e0be8a83f
+model_validation|function|c3ec20cd56c32525
+format_ssg|function|1bef4d8d7443d6cb
+plot_removal_prob|function|53949fd4242e0f02
+occ_data_prep|function|6de27b789625e3af
+plot_trace|function|3e619ae9cf456b61
+out_dir|object|6788352ad7f4224f
+extract_nlcd|function|e834f7ff1f0c9cd1
+mis_effort_query|function|f8e581c92c83eb9f
+input_dir|object|f41a9421041c5b2a
+fit_zibinom_mod|function|f99ab3fc08051fe8
+grid_take_effort|function|080de17258d0901d
+make_chain_idx|function|1cda52a08f9f6cf2
+raw_dir|object|5088448f63d62dee
+plot_abundance|function|10b7768e818feae3
+extract_oak|function|fe2ccf5c34ae520c
+align_sites|function|c1d747c94bef3587
+plot_elim_samp|function|e6239313a5fbec94
+grid_sysbait|function|5ab1f93036685ca2
+mcmc_controller|object|38391f4600c42f16
+plot_pabs|function|31fda0b1e643fa8a
+nimble_fun_avail|function|f1fa1236ced46e80
+make_elim_areas|function|2e4f9ff3740cf2d7
+rem_data_prep|function|c81e7ecdf32c53f7
+clean_aerial_tracks|function|6131c6c559b08670
+site_lat_longs|function|0bd46459943aa91c
+grid_removals|function|b455c3da7bad3c4a
+plot_det|function|5881fbc809c2bb86
+clean_sysbait|function|df7f38b3fc5f2815
+format_sec|function|eb8856a119d2191f
