@@ -28,7 +28,6 @@ raw_take_jan23_jun23|stem|6d67de245d75ca6c|05650d679b9fbbd0|f602c2449499ec73|-12
 raw_take_jul23_sep24|stem|d1916e7f69952525|2f27a7705bb4a89a|f602c2449499ec73|1096287220|./data/raw/take/Take_July23_Sept24.csv|t20000.7381876974s|s273509b|273509|file|local|vector|||0||
 raw_take_oct24_dec24|stem|6a5b1af21e6eb4cf|d81df9a6a718f705|f602c2449499ec73|1491486896|./data/raw/take/MOFeralHogData_Oct24_Dec24.gdb|t20167.9332918219s|s24576b|24576|file|local|vector|||0||
 avail_fun|stem|18c57b2712d9fcf6|1529a0bc1b7e8303|eb6c0194533046d4|-1919449248||t20174.7002455567s|s487935b|487935|rds|local|vector|||4.02|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-chain_idx|stem|c0c331d1fd2beeb6|2c68bb5885d0b0ad|dd79586292057c77|2014838078||t20174.9138589355s|s99b|99|rds|local|vector||chain_idx_6e95f3b2b5476d92*chain_idx_b3a2147ad240fae3*chain_idx_f5968f8186dadba0|4.703|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 ssg|stem|8b1ae8bbc507becc|9c89da6f1bbb0e9c|f3b244cc9f2f67eb|2141844174|./data/input/HUC10_MO/huc10_siteIDs_cond_EA.shp|t19930.6165209446s|s10844548b|10844548|file|local|vector|||0||
 ssg_formatted|stem|26895e240cc66a53|f1a313956926f406|bc6c05ae3a95681e|-1247696189||t20167.7530108341s|s9037886b|9037886|rds|local|vector|||0.19||
 elim_areas|stem|d26fb17baa877f6c|39ddeaf3d878cbbf|7dd5a74576b3f38a|-2060295955||t20174.6530251231s|s2251283b|2251283|rds|local|vector|||1.35||
@@ -59,51 +58,23 @@ take_effort|stem|5f0e2c8a1a130159|5462e351c17494c4|5072de900d9ed9ed|1078299164||
 dat_rem|stem|90836953d504ad8c|43f3363eb042e882|d6d86bfedba555a7|-938537672||t20174.7275066013s|s61093b|61093|rds|local|vector|||0.12||
 site_idx_lookup|stem|dfe5f9e38a3373f8|49fae7a4a0e83c1f|b13b420ca52ddbb4|317771321||t20174.7275069916s|s490b|490|rds|local|vector|||0||
 local_controller|object|0f4c2adae3a2e230|||||||||||||||
-samples_9838bd590d9a6a49|branch|eb753f7b56acb0f3|e194321a4c92266b|119b42a8d4e72f7d|-1203821932||t20188.7232568186s|s201257568b|201257568|rds|local|vector|samples||1707.125|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples_6a7beae6237c8c08|branch|52e92744c1c9500b|e194321a4c92266b|119b42a8d4e72f7d|763494999||t20188.7234575286s|s201720047b|201720047|rds|local|vector|samples||1719.265|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples_34f0237c314b2aba|branch|ca23d683fd75fde0|e194321a4c92266b|119b42a8d4e72f7d|341238872||t20188.723713958s|s200709936b|200709936|rds|local|vector|samples||1750.015|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples|pattern|455b4fc950939798|e194321a4c92266b||1609165135||||603687551|rds|local|vector||samples_9838bd590d9a6a49*samples_6a7beae6237c8c08*samples_34f0237c314b2aba|5176.405||
-abundance_plots|stem|ea71f761b816a855|ff8933739bfd81d4|674e4934181ac01f|1784815996||t20188.7788145326s|s262162b|262162|rds|local|vector|||4752.437|NAs produced|
-pabs_plots|stem|f18134780f9034c2|937ca496bfd89c6f|85d3f7739dc55cfa|-1370887671||t20188.7870946137s|s59266189b|59266189|rds|local|vector|||705.187|attribute variables are assumed to be spatially constant throughout all geometries|
-det_plot|stem|4e0f2b4dff285a48|6c6cd7991be13dba|f3adb012ab29d57b|-2113591127||t20188.7871655445s|s1180b|1180|rds|local|vector|||0.469||
-removal_prob_plots|stem|0ef522acf4223837|482009c2e746f295|be82674f356f2108|1290114349||t20188.7881209176s|s29727b|29727|rds|local|vector|||50.5||
-wi_mod_val|stem|9650e109db2bea43|dd822a6ecd435a6d|70b8c4d3b225f64a|-38965719||t20188.7881211028s|s332b|332|rds|local|vector|||48.203|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-elim_samp_plot|stem|32d46c7100b54b78|9811939eabc6aaaa|d88d9a826bae9092|-350873110||t20188.7886737145s|s552b|552|rds|local|vector|||17.938||
-trace_plots|stem|25dae4ac1c29aa28|f0ced7324a1131fa|f8cdc1e3645027be|-1890721789||t20188.7886739807s|s3177b|3177|rds|local|vector|||3.765|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-.Random.seed|object|962a56adc28c6b6c|||||||||||||||
-clean_take|function|0b16d34b4f0b0191|||||||||||||||
-grid_sysbait_effort|function|d89dde2238f15bb9|||||||||||||||
-pull_effort_mis|function|fd1ef91e0be8a83f|||||||||||||||
-model_validation|function|c3ec20cd56c32525|||||||||||||||
-format_ssg|function|1bef4d8d7443d6cb|||||||||||||||
-plot_removal_prob|function|53949fd4242e0f02|||||||||||||||
-occ_data_prep|function|6de27b789625e3af|||||||||||||||
-plot_trace|function|3e619ae9cf456b61|||||||||||||||
-out_dir|object|6788352ad7f4224f|||||||||||||||
-extract_nlcd|function|e834f7ff1f0c9cd1|||||||||||||||
-mis_effort_query|function|f8e581c92c83eb9f|||||||||||||||
-input_dir|object|f41a9421041c5b2a|||||||||||||||
-fit_zibinom_mod|function|f99ab3fc08051fe8|||||||||||||||
-grid_take_effort|function|080de17258d0901d|||||||||||||||
-make_chain_idx|function|1cda52a08f9f6cf2|||||||||||||||
-raw_dir|object|5088448f63d62dee|||||||||||||||
-plot_abundance|function|10b7768e818feae3|||||||||||||||
-extract_oak|function|fe2ccf5c34ae520c|||||||||||||||
-align_sites|function|c1d747c94bef3587|||||||||||||||
-plot_elim_samp|function|e6239313a5fbec94|||||||||||||||
-grid_sysbait|function|5ab1f93036685ca2|||||||||||||||
-mcmc_controller|object|38391f4600c42f16|||||||||||||||
-plot_pabs|function|31fda0b1e643fa8a|||||||||||||||
-nimble_fun_avail|function|f1fa1236ced46e80|||||||||||||||
-make_elim_areas|function|2e4f9ff3740cf2d7|||||||||||||||
-rem_data_prep|function|c81e7ecdf32c53f7|||||||||||||||
-clean_aerial_tracks|function|6131c6c559b08670|||||||||||||||
-site_lat_longs|function|0bd46459943aa91c|||||||||||||||
-grid_removals|function|b455c3da7bad3c4a|||||||||||||||
-plot_det|function|5881fbc809c2bb86|||||||||||||||
-clean_sysbait|function|df7f38b3fc5f2815|||||||||||||||
-format_sec|function|eb8856a119d2191f|||||||||||||||
-.Random.seed|object|0a51440adfec55fb
+samples_5462f1638ce7956d|branch|bac7c84b6341908e|36cf3ff3dc935c81|22b91b9e1e87ddb8|1253120668||t20195.6320920274s|s131412177b|131412177|rds|local|vector|samples||1809.625|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_e8c5c3a1642e90b4|branch|9c94e44ea032af07|36cf3ff3dc935c81|22b91b9e1e87ddb8|2013235222||t20195.632693507s|s130811779b|130811779|rds|local|vector|samples||1807.234|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_808e0b0010c86726|branch|0b704e894f62716d|36cf3ff3dc935c81|22b91b9e1e87ddb8|194330080||t20195.6328267256s|s130783379b|130783379|rds|local|vector|samples||1832.922|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_2fc8e6492850a3d3|branch|d5dbfadafaf96700|36cf3ff3dc935c81|22b91b9e1e87ddb8|1845263558||t20195.6505536911s|s131178429b|131178429|rds|local|vector|samples||1583|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_648bae623f0114d2|branch|2516fb3d6e755930|36cf3ff3dc935c81|22b91b9e1e87ddb8|-1368806507||t20195.6515376619s|s131004382b|131004382|rds|local|vector|samples||1617.172|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+chain_idx|stem|c0c331d1fd2beeb6|2c68bb5885d0b0ad|dd79586292057c77|2014838078||t20195.7422639997s|s99b|99|rds|local|vector||chain_idx_6e95f3b2b5476d92*chain_idx_b3a2147ad240fae3*chain_idx_f5968f8186dadba0|4.172|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_6a7beae6237c8c08|branch|2ded365ec290e12a|232465ff9a618263|b0dc9d7c917859eb|763494999||t20195.7793131189s|s423336139b|423336139|rds|local|vector|samples||3153.172|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_9838bd590d9a6a49|branch|fb569a948176e888|232465ff9a618263|b0dc9d7c917859eb|-1203821932||t20195.7796833485s|s423537573b|423537573|rds|local|vector|samples||3172.125|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_34f0237c314b2aba|branch|c9d700064d01be63|232465ff9a618263|b0dc9d7c917859eb|341238872||t20195.7800542605s|s422658124b|422658124|rds|local|vector|samples||3153.532|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples|pattern|81daf45390c4258f|232465ff9a618263||1609165135||||1269531836|rds|local|vector||samples_9838bd590d9a6a49*samples_6a7beae6237c8c08*samples_34f0237c314b2aba|9478.829||
+removal_prob_plots|stem|25a7b28d29546817|482009c2e746f295|29aed91c02a5c213|1290114349||t20195.7802481009s|s29717b|29717|rds|local|vector|||4.468||
+abundance_plots|stem|544232566c51415f|ff8933739bfd81d4|99db2ab41dd166dc|1784815996||t20195.7822769072s|s257502b|257502|rds|local|vector|||163.781|NAs produced|
+pabs_plots|stem|703960f2adc40152|937ca496bfd89c6f|ed697699f8bc1abe|-1370887671||t20195.7974286939s|s59266431b|59266431|rds|local|vector|||1292|attribute variables are assumed to be spatially constant throughout all geometries|
+det_plot|stem|877fd5cb8682e3e0|6c6cd7991be13dba|d13cc829744199d3|-2113591127||t20195.8007967063s|s1180b|1180|rds|local|vector|||1.468||
+elim_samp_plot|stem|4689582be97b8064|9811939eabc6aaaa|40721f591a191690|-350873110||t20195.8014933808s|s551b|551|rds|local|vector|||6.063||
+data_plots|stem|6e140ed9a58a961e|6ce6fe3157b979db|4ddac3fba646f847|-1715264339||t20195.8019409053s|s95b|95|rds|local|vector|||2.281||
+.Random.seed|object|a2e09328c2465d5c
 clean_take|function|0b16d34b4f0b0191
 grid_sysbait_effort|function|d89dde2238f15bb9
 pull_effort_mis|function|fd1ef91e0be8a83f
@@ -111,28 +82,31 @@ model_validation|function|c3ec20cd56c32525
 format_ssg|function|1bef4d8d7443d6cb
 plot_removal_prob|function|53949fd4242e0f02
 occ_data_prep|function|6de27b789625e3af
-plot_trace|function|3e619ae9cf456b61
+plot_trace|function|6153ce02618e1957
 out_dir|object|6788352ad7f4224f
 extract_nlcd|function|e834f7ff1f0c9cd1
 mis_effort_query|function|f8e581c92c83eb9f
 input_dir|object|f41a9421041c5b2a
-fit_zibinom_mod|function|f99ab3fc08051fe8
+fit_zibinom_mod|function|ea83fc73ffe87410
 grid_take_effort|function|080de17258d0901d
 make_chain_idx|function|1cda52a08f9f6cf2
 raw_dir|object|5088448f63d62dee
-plot_abundance|function|10b7768e818feae3
+plot_abundance|function|2e993c2a42419edf
 extract_oak|function|fe2ccf5c34ae520c
 align_sites|function|c1d747c94bef3587
 plot_elim_samp|function|e6239313a5fbec94
 grid_sysbait|function|5ab1f93036685ca2
 mcmc_controller|object|38391f4600c42f16
-plot_pabs|function|31fda0b1e643fa8a
+plot_pabs|function|2d54def1ff481411
 nimble_fun_avail|function|f1fa1236ced46e80
 make_elim_areas|function|2e4f9ff3740cf2d7
+plot_data|function|f092199fee3768c4
 rem_data_prep|function|c81e7ecdf32c53f7
 clean_aerial_tracks|function|6131c6c559b08670
 site_lat_longs|function|0bd46459943aa91c
 grid_removals|function|b455c3da7bad3c4a
-plot_det|function|5881fbc809c2bb86
+plot_det|function|0afeeb85f2d91cfe
 clean_sysbait|function|df7f38b3fc5f2815
 format_sec|function|eb8856a119d2191f
+trace_plots|stem|ad6f2f394921456c|6c73400e09316942|25c0d2f107033c2b|-1890721789||t20195.8139607219s|s3170b|3170|rds|local|vector|||6.515||
+wi_mod_val|stem|4d2e613b20c25615|dd822a6ecd435a6d|c191dfd1b92eb9c4|-38965719||t20195.8147626389s|s327b|327|rds|local|vector|||58.5||
