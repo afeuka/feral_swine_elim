@@ -5,7 +5,9 @@ plot_trace <- function(samples,
                        dat_rem,
                        out_dir,
                        chain_idx,
-                       site_idx_lookup){
+                       site_idx_lookup,
+                       lat_long_siteid,
+                       oak_siteid){
 
   nChains <- max(chain_idx)
   nmcmc <- nrow(samples)/nChains
@@ -215,6 +217,55 @@ plot_trace <- function(samples,
               lci=quantile(lambda,0.025),
               uci=quantile(lambda,0.975))
   
+  #lambda functional response to oak
+  oak_sc <- seq(min(oak_siteid$prop_oak_sc),max(oak_siteid$prop_oak_sc),length.out=50)
+  oak_bt <- oak_sc*attr(oak_siteid$prop_oak_sc,'scaled:scale')+attr(oak_siteid$prop_oak_sc,'scaled:center')
+  lambda <- sapply(1:nrow(samples),function(i)exp(beta_lam[i,1] + beta_lam[i,2] + beta_lam[i,3] + beta_lam[i,4]*oak_sc))
+  oak_lam <- data.frame(oak_sc=oak_sc,
+                        oak_bt=oak_bt,
+                        md_lam=apply(lambda,1,median),
+                        lci_lam=sapply(1:nrow(lambda),function(i)quantile(lambda[i,],prob=0.025)),
+                        uci_lam=sapply(1:nrow(lambda),function(i)quantile(lambda[i,],prob=0.975)))
+  oak_plot <- ggplot(oak_lam)+
+    geom_ribbon(aes(x=oak_bt,ymin=lci_lam,ymax=uci_lam),alpha=0.3)+
+    geom_line(aes(x=oak_bt,y=md_lam))+
+    ylab(expression(paste("Mean ",lambda)))+
+    xlab("Proportion of oak cover in watershed")+
+    theme(text=element_text(size=15),
+          axis.line = element_line(),
+          panel.background=element_blank())
+  
+  # ggsave(filename=file.path(out_dir,'plots','oak_lambda_fun.jpeg'),
+  #        width=7,height=5)
+  
+  #lambda functional response to latitude
+  beta_lam_sum
+  lat_long <- lat_long_siteid %>% st_drop_geometry() %>% as.data.frame()
+  lat_sc <- seq(min(lat_long$lat_sc),max(lat_long$lat_sc),length.out=50)
+  lat_bt <- lat_sc*attr(lat_long$lat_sc,'scaled:scale')+attr(lat_long$lat_sc,'scaled:center')
+  lambda_lat <- sapply(1:nrow(samples),function(i)exp(beta_lam[i,1] + beta_lam[i,2]*lat_sc + beta_lam[i,3] + beta_lam[i,4]))
+  lat_lam <- data.frame(lat_sc=lat_sc,
+                        lat_bt=lat_bt,
+                        md_lat=apply(lambda_lat,1,median),
+                        lci_lat=sapply(1:nrow(lambda_lat),function(i)quantile(lambda_lat[i,],prob=0.025)),
+                        uci_lat=sapply(1:nrow(lambda_lat),function(i)quantile(lambda_lat[i,],prob=0.975)))
+  lat_plot<- ggplot(lat_lam)+
+    geom_ribbon(aes(x=lat_bt,ymin=lci_lat,ymax=uci_lat),alpha=0.3)+
+    geom_line(aes(x=lat_bt,y=md_lat))+
+    ylab(expression(paste("Mean ",lambda)))+
+    xlab("Northing (m)")+
+    theme(text=element_text(size=15),
+          axis.line=element_line(),
+          panel.background=element_blank())
+  
+  # ggsave(filename=file.path(out_dir,'plots','lat_lambda_fun.jpeg'),
+  #        width=7,height=5)
+  
+  cowplot::plot_grid(oak_plot,lat_plot,
+                     labels=c("A","B"))
+  ggsave(filename=file.path('output','plots','oak_lam_lambda_fun.jpeg'),
+         width=9,height=4)
+  
   list(
     beta_sum=beta_sum,
     beta_lam_sum=beta_lam_sum,
@@ -337,7 +388,9 @@ plot_pabs <- function(samples,
     scale_y_continuous(name=paste0("Proportion of watersheds with p(elim)>",elim_thresh))+
     xlab("Season")+
     scale_color_discrete(name="Elimination area")+
-    theme(text=element_text(size=15))+
+    theme(text=element_text(size=15),
+          # axis.line=element_line(),
+          panel.background=element_blank())
     guides(color="none")
   
   ggsave(filename=file.path(out_dir,"plots",
@@ -509,7 +562,7 @@ plot_pabs <- function(samples,
   
   write.csv(pabs_thresh_yr,
             file.path(out_dir,"tables",
-                      paste0("area_above_,",elim_thresh,"_table.csv")))
+                      paste0("area_above_",elim_thresh,"_table.csv")))
   
   ### by year and ea ------------------
   pabs_thresh_yr_ea_samp <- pabs_long %>% 
@@ -548,7 +601,7 @@ plot_pabs <- function(samples,
   
   write.csv(pabs_thresh_yr_ea_prop,
             file.path(out_dir,"tables",
-                      paste0("area_above_,",elim_thresh,"_ea_prop_table.csv")))
+                      paste0("area_above_",elim_thresh,"_ea_prop_table.csv")))
   
   pabs_thresh_yr_ea_km <- pabs_thresh_yr_ea %>% 
     select(-ea_area_km) %>% 
@@ -561,7 +614,7 @@ plot_pabs <- function(samples,
   
   write.csv(pabs_thresh_yr_ea_km,
             file.path(out_dir,"tables",
-                      paste0("area_above_,",elim_thresh,"_ea_km_table.csv")))
+                      paste0("area_above_",elim_thresh,"_ea_km_table.csv")))
   
   ##median p(abs) by season and ea -----------------------
   pabs_sum_ea <- pabs_long %>% 
@@ -584,7 +637,8 @@ plot_pabs <- function(samples,
     xlab("Season")+
     scale_y_continuous(name="Median probability of feral swine absence")+
     scale_color_discrete(name="Elimination area")+
-    theme(text=element_text(size=15))+
+    theme(text=element_text(size=15),
+          panel.background=element_blank())+
     guides(color="none")
   
   ggsave(filename=file.path(out_dir,"plots","pabs_md_season_ea.jpeg"),
@@ -641,7 +695,9 @@ plot_det <- function(samples,
     geom_line(aes(x=traps_km,y=md),lwd=1)+
     ylab("Detection probability")+
     xlab(expression(paste("Bait station nights per k",m^2)))+
-    theme(text=element_text(size=15))
+    theme(text=element_text(size=15),
+          axis.line=element_line(),
+          panel.background=element_blank())
   
   ggsave(filename=file.path(out_dir,"plots","occ_det_eff_curve.jpeg"),
          device="jpeg",width=7,height=5,units="in")
@@ -729,7 +785,8 @@ plot_abundance <- function(samples,
                            ssg_formatted,
                            elim_areas,
                            site_idx_lookup,
-                           out_dir){
+                           out_dir,
+                           make_N_change_tab=FALSE){
   
   if(class(samples)=="list"){
     nChains <- length(samples)
@@ -926,7 +983,7 @@ plot_abundance <- function(samples,
     scale_color_manual(name="",
                        values=c("Estimated Density"="black",
                                 "No Removal"="red"))+
-    ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
+    ylab(expression(paste("Feral swine removal density (swine/k",m^2,")")))+
     xlab("Season")+
     theme(text=element_text(size=15))
   
@@ -935,7 +992,7 @@ plot_abundance <- function(samples,
   
   #removal needed
   axis_trans_d<- 0.03
-  ggplot()+  
+  rem_plot <- ggplot()+  
     geom_bar(data=dat_rem_sum_top,
              aes(x=month,y=tot_rem_km/axis_trans_d),stat="identity",
              alpha=0.6)+
@@ -960,20 +1017,21 @@ plot_abundance <- function(samples,
                                 "Removal Needed"="blue"))+
     ylab(expression(paste("Feral swine density (swine/k",m^2,")")))+
     xlab("Season")+
-    theme(text=element_text(size=15))
+    theme(text=element_text(size=15),
+          panel.background=element_blank())
   
-  ggsave(filename=file.path(out_dir,"plots","density_trend_removal_needed.jpeg"),
+  ggsave(rem_plot, filename=file.path(out_dir,"plots","density_trend_removal_needed.jpeg"),
          device="jpeg",width=10,height=6,units="in")
   
   
   #standardized abundance
   axis_scale <- 3
-  ggplot()+  
+  std_plot <- ggplot()+  
     geom_ribbon(data=N_sum_top,
                 aes(x=per_start,ymin=lci_N_std,ymax=uci_N_std,
-                    fill="Estimated \nStandardized Abundance"),alpha=0.2)+
+                    fill="Abundance"),alpha=0.2)+
     geom_line(data=N_sum_top,
-              aes(x=per_start,y=md_N_std,col="Estimated \nStandardized Abundance"),lwd=1)+
+              aes(x=per_start,y=md_N_std,col="Abundance"),lwd=1)+
     geom_ribbon(data=N_sum_top,
                 aes(x=per_start,ymin=lci_N_ss_no_rem,ymax=uci_N_ss_no_rem,
                     fill="No Removal"),
@@ -983,58 +1041,67 @@ plot_abundance <- function(samples,
               lty=3,lwd=1)+
     facet_wrap(.~SiteID)+
     scale_fill_manual(name="",
-                      values=c("Estimated \nStandardized Abundance"="black",
+                      values=c("Abundance"="black",
                                "No Removal"="red",
                                "Removal Needed"="blue"))+
     scale_color_manual(name="",
-                       values=c("Estimated \nStandardized Abundance"="black",
+                       values=c("Abundance"="black",
                                 "No Removal"="red",
                                 "Removal Needed"="blue"))+
     ylab("Standardized feral swine abundance")+
     xlab("Season")+
-    theme(text=element_text(size=15))
+    theme(text=element_text(size=15),
+          panel.background=element_blank())
   
-  ggsave(filename=file.path(out_dir,"plots","std_abundance_trend_removal.jpeg"),
+  ggsave(std_plot,filename=file.path(out_dir,"plots","std_abundance_trend_removal.jpeg"),
          device="jpeg",width=10,height=6,units="in")
   
+  cowplot::plot_grid(std_plot,rem_plot,ncol=1,labels=c("A","B"))
+  ggsave(filename=file.path(out_dir,"plots","std_N_rem_combined.jpeg"),
+         device="jpeg",width=10,height=12,units="in")
+  
   #annual change in abundance table
-  N_yr <- N_long %>% 
-    # filter(SiteID%in%site_rem_cutoff$SiteID) %>% 
-    filter(month(per_start)==10)
-  
-  N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
-  # N_yr$N_prev<- NA
-  # for(i in 1:nrow(N_yr)){
-  #   if(N_yr$per_temp[i]>1){
-  #     N_yr$N_prev[i] <- N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
-  #                                N_yr$SiteID==N_yr$SiteID[i] &
-  #                                N_yr$samp==N_yr$samp[i] &
-  #                                N_yr$chain==N_yr$chain[i]]
-  #   }
-  # }
-  N_yr$N_prev <- sapply(1:nrow(N_yr),function(i){
-    if(N_yr$per_temp[i]>1){
-      N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
-               N_yr$SiteID==N_yr$SiteID[i] &
-               N_yr$samp==N_yr$samp[i] &
-               N_yr$chain==N_yr$chain[i]]
-    } else {
-      NA
-    }
-  })
-  
-  N_yr$per_change <- (N_yr$N-N_yr$N_prev)/N_yr$N_prev
-  
-  N_yr_sum <- N_yr %>% 
-    filter(year>2020) %>% 
-    group_by(SiteID,period_idx,per_start) %>% 
-    summarise(mn=mean(per_change,na.rm=T),
-              md=median(per_change,na.rm=T),
-              lci=quantile(per_change,0.025,na.rm=T),
-              uci=quantile(per_change,0.975,na.rm=T)) 
-  
-  write.csv(N_yr_sum,file.path(out_dir,"tables","N_change_table.csv"))
-  
+  if(make_N_change_tab){
+    N_yr <- N_long %>% 
+      filter(SiteID%in%site_rem_cutoff$SiteID) %>%
+      filter(month(per_start)==10)
+    
+    N_yr$per_temp <- as.numeric(as.factor(N_yr$period_idx))
+    # N_yr$N_prev<- NA
+    # for(i in 1:nrow(N_yr)){
+    #   if(N_yr$per_temp[i]>1){
+    #     N_yr$N_prev[i] <- N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
+    #                                N_yr$SiteID==N_yr$SiteID[i] &
+    #                                N_yr$samp==N_yr$samp[i] &
+    #                                N_yr$chain==N_yr$chain[i]]
+    #   }
+    # }
+    N_yr$N_prev <- sapply(1:nrow(N_yr),function(i){
+      if(N_yr$per_temp[i]>1){
+        N_yr$N[N_yr$per_temp==(N_yr$per_temp[i]-1) &
+                 N_yr$SiteID==N_yr$SiteID[i] &
+                 N_yr$samp==N_yr$samp[i] &
+                 N_yr$chain==N_yr$chain[i]]
+      } else {
+        NA
+      }
+    })
+    
+    N_yr$per_change <- (N_yr$N-N_yr$N_prev)/N_yr$N_prev
+    
+    N_yr_sum <- N_yr %>% 
+      filter(year>2020) %>% 
+      group_by(SiteID,period_idx,per_start) %>% 
+      summarise(mn=mean(per_change,na.rm=T),
+                md=median(per_change,na.rm=T),
+                lci=quantile(per_change,0.025,na.rm=T),
+                uci=quantile(per_change,0.975,na.rm=T)) 
+    
+    write.csv(N_yr_sum,file.path(out_dir,"tables","N_change_table.csv"))
+  } else {
+    N_yr_sum <- read.csv(file.path(out_dir,"tables","N_change_table.csv"))
+  }
+ 
   list(
     N_sum=N_sum,
     N_yr_sum=N_yr_sum,
@@ -1151,3 +1218,54 @@ plot_removal_prob <- function(samples,
     det_t_sum=det_t_sum
   )
 }
+
+plot_data <- function(abundance_plots,
+                      out_dir){
+  
+  dat_rem_sum<- abundance_plots$dat_rem_sum %>% filter(method!="Ground")
+  
+  topN <- dat_rem_sum %>% 
+    ungroup() %>% 
+    group_by(SiteID) %>% 
+    summarise(tot_rem=sum(removal)) %>% 
+    arrange(desc(tot_rem))
+  
+  topN<- topN[1:6,]
+  
+  ggplot(dat_rem_sum %>% filter(SiteID%in%topN$SiteID))+
+    geom_bar(aes(x=month,y=removal,fill=method),stat='identity')+
+    facet_wrap(.~SiteID)+
+    ylab("Number of feral swine removed")+
+    xlab("Month")+
+    scale_fill_discrete(name="Method")+
+    theme(panel.background = element_blank(),
+          text=element_text(size=15))
+  
+  ggsave(filename=file.path(out_dir,'plots','raw data','removal_counts.jpeg'),
+         width=8,height=7)
+  
+  ggplot(dat_rem_sum %>% filter(SiteID%in%topN$SiteID))+
+    geom_bar(aes(x=month,y=removal/tot_hrs,fill=method),stat='identity')+
+    facet_wrap(.~SiteID)+
+    ylab("Number of feral swine removed per effor hour")+
+    xlab("Month")+
+    scale_fill_discrete(name="Method")+
+    theme(panel.background = element_blank(),
+          text=element_text(size=15))
+  
+  ggsave(filename=file.path(out_dir,'plots','raw data','cpue.jpeg'),
+         width=8,height=7)
+  
+  ggplot(dat_rem_sum %>% filter(SiteID%in%topN$SiteID))+
+    geom_bar(aes(x=month,y=tot_hrs,fill=method),stat='identity')+
+    facet_wrap(.~SiteID)+
+    ylab("Number of hours spent removing feral swine")+
+    xlab("Month")+
+    scale_fill_discrete(name="Method")+
+    theme(panel.background = element_blank(),
+          text=element_text(size=15))
+  
+  ggsave(filename=file.path(out_dir,'plots','raw data','removal_hours.jpeg'),
+         width=8,height=7)
+}
+

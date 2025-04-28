@@ -1714,10 +1714,10 @@ fit_zibinom_mod <- function(dat_occ,
                             nlcd_siteid,
                             lat_long_siteid,
                             oak_siteid,
-                            eff_weeks,
-                            niter=100000,
-                            thin=1,
-                            burnProp=0.95,
+                            # eff_weeks,
+                            niter,
+                            thin,
+                            burnProp,
                             chain_idx){
   
   #covariates
@@ -1778,8 +1778,8 @@ fit_zibinom_mod <- function(dat_occ,
       }}}
   
   #mean trapping effort  -------------------------------
-  mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
-    attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
+  # mn_te <- (((0.5/2.59)*45)-attr(dat_occ$trap_nights_km_sc,"scaled:center"))/
+  #   attr(dat_occ$trap_nights_km_sc,"scaled:scale") 
 
   ## model specification ------------------------
   ZIbinomcode <- nimbleCode({
@@ -1815,8 +1815,8 @@ fit_zibinom_mod <- function(dat_occ,
     
     
     #mean effort detection probability
-    mu_pdet_mn <- alpha[1] + alpha[2]*mn_te
-    logit(p_sys) ~ dnorm(mu_pdet_mn,sd=sd_pdet)
+    # mu_pdet_mn <- alpha[1] + alpha[2]*mn_te
+    # logit(p_sys) ~ dnorm(mu_pdet_mn,sd=sd_pdet)
     
     
     for(i in 1:nsites_rem){
@@ -1847,10 +1847,10 @@ fit_zibinom_mod <- function(dat_occ,
         z_site[k,t] ~ dbern(psi[k,t])
         
         #effective detection given effort
-        pstar_site[k,t] <- 1-(1-p_sys)^eff_weeks
+        # pstar_site[k,t] <- 1-(1-p_sys)^eff_weeks
         
         #p(elimination) given effort
-        pelim[k,t] <- pabs[k,t]/(pabs[k,t] + psi[k,t]*(1-pstar_site[k,t]))
+        # pelim[k,t] <- pabs[k,t]/(pabs[k,t] + psi[k,t]*(1-pstar_site[k,t]))
       }
     }
     
@@ -1951,8 +1951,8 @@ fit_zibinom_mod <- function(dat_occ,
                 site_idx_occ_rem=site_idx_lookup$site_idx_occ, 
                 period_idx_occ=dat_occ$period_idx,
                 nsites_rem=nsites_rem,
-                mn_te=mn_te,
-                eff_weeks=eff_weeks,
+                # mn_te=mn_te,
+                # eff_weeks=eff_weeks,
                 site_idx_t=dat_trap$site_idx_rem,
                 site_idx_a=dat_aerial$site_idx_rem,
                 period_idx_t=dat_trap$period_idx,

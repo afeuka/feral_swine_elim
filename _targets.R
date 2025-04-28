@@ -28,8 +28,8 @@ tar_option_set(
   packages = c("sf", "tidyverse", "nimble","snow",
                "lubridate","ROracle","keyring",
                "tigris","amt","terra","exactextractr",
-               "pROC","gridExtra"), # packages that your targets use
-  controller = mcmc_controller
+               "pROC","gridExtra") # packages that your targets use
+  # controller = mcmc_controller
   # resources = tar_resources(
   #   crew = tar_resources_crew(controller = "local_controller")
   # )
@@ -294,8 +294,11 @@ list(
                             nlcd_siteid,
                             lat_long_siteid,
                             oak_siteid,
-                            eff_weeks=4,
-                            chain_idx=chain_idx),
+                            # eff_weeks=4,
+                            chain_idx=chain_idx,
+                            niter=200000,
+                            thin=5,
+                            burnProp=0.8),
     description="Compile and fit occupancy/removal model",
     pattern=map(chain_idx)
     # resources=tar_resources(
@@ -315,7 +318,9 @@ list(
                        dat_rem,
                        out_dir,
                        chain_idx,
-                       site_idx_lookup),
+                       site_idx_lookup,
+                       lat_long_siteid,
+                       oak_siteid),
     description="Make trace plots"
   ),
   tar_target(
@@ -352,6 +357,12 @@ list(
     name=removal_prob_plots,
     command=plot_removal_prob(samples,dat_rem,out_dir),
     description = "Make removal probability plots and dataframe",
+    deployment="main"
+  ),
+  tar_target(
+    name=data_plots,
+    command=plot_data(abundance_plots,out_dir),
+    description="Make raw data plots",
     deployment="main"
   )
 )
