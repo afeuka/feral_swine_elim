@@ -54,6 +54,7 @@ det_t_sum <- rem_prob$det_t_sum
 dat_occ <- tar_read(dat_occ)
 dat_rem <- tar_read(dat_rem)
 
+date_text <- "10APR25"
 
 save(beta_sum,beta_lam_sum,lam_sum,
      pabs_sum,pabs_sum_fy,pabs_sum_ea,
@@ -63,7 +64,8 @@ save(beta_sum,beta_lam_sum,lam_sum,
      rem_df,det_sum,det_a_sum,det_t_sum,
      dat_occ,dat_rem,
      file=file.path('output','samples',
-                    'posterior_summaries_10APR25.RData'))
+                    'posterior_summaries_',
+                    date_text,'.RData'))
 
 #save ouptut for shiny
 library(sf)
@@ -74,8 +76,10 @@ pabs_sum_sf<- pabs_sum %>%
   st_as_sf() %>% 
   st_simplify()
 
+date_text <- "10APR25"
 st_write(pabs_sum_sf,
-         'C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Shiny/mo_feral_swine_elim_app/resources/afeuka/mo-fs-elim/model_outputs/pabs_sum_sf_simple_10APR25.shp')
+         'C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Shiny/mo_feral_swine_elim_app/resources/afeuka/mo-fs-elim/model_outputs/pabs_sum_sf_simple_',
+         date_text,'.shp')
 
 
 site_idx_lookup <- tar_read(site_idx_lookup)
@@ -94,4 +98,5 @@ save(beta_sum,beta_lam_sum,lam_sum,
      rem_df,det_sum,det_a_sum,det_t_sum,
      dat_occ,dat_rem,
      alpha,sd_pdet,site_idx_lookup,
-     file='C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Shiny/mo_feral_swine_elim_app/resources/afeuka/mo-fs-elim/model_outputs/posterior_summaries_10APR25.RData')
+     file='C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Shiny/mo_feral_swine_elim_app/resources/afeuka/mo-fs-elim/model_outputs/posterior_summaries_',
+     date_text,'.RData')

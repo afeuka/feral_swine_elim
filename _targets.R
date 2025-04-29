@@ -38,9 +38,7 @@ tar_option_set(
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
 tar_source("plot_functions.R")
-# tar_source("other_functions.R") # Source other scripts as needed.
 
-# Replace the target list below with your own:
 list(
   
   ## cleaning/formatting raw data --------------
@@ -48,19 +46,19 @@ list(
     name = ssg,
     command = file.path(input_dir,"HUC10_MO","huc10_siteIDs_cond_EA.shp"),
     format="file",
-    description = "HUC10 study site grid file" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+    description = "HUC10 study site grid file" 
   ),
   tar_target(
     name = sec,
     command = file.path(input_dir,"MO_Public_Land_Survey_System",
                         "MO_Public_Land_Survey_System.shp"),
     format="file",
-    description = "MO Public Land Survey sections file" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+    description = "MO Public Land Survey sections file" 
   ),
   tar_target(
     name = ssg_formatted,
     command = format_ssg(ssg),
-    description = "Format HUC10 watershed file for MO" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+    description = "Format HUC10 watershed file for MO" 
   ),
   tar_target(
     name=elim_areas,
@@ -70,7 +68,7 @@ list(
   tar_target(
     name = sec_formatted,
     command = format_sec(sec,ssg_formatted),
-    description = "Format PLS sections file for MO" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+    description = "Format PLS sections file for MO" 
   ),
   tar_target(
     name = sysbait_grid,
@@ -78,18 +76,18 @@ list(
                            take_clean,
                            sec_formatted,
                            ssg_formatted,
-                           start_date="2020-09-01", #start date for data in y-m-d string
-                           end_date="2024-12-31"),
-    description = "Grid systematic baiting data" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+                           start_date="2020-10-01", #start date for data in y-m-d string
+                           end_date="2025-03-30"),
+    description = "Grid systematic baiting data" 
   ),
   tar_target(
     name = take_grid,
     command = grid_removals(take_clean,sysbait_grid,sec_formatted,ssg_formatted),
-    description = "Grid take/removal data" # requires development targets >= 1.5.0.9001: remotes::install_github("ropensci/targets")
+    description = "Grid take/removal data" 
   ),
   tar_target(
     name=effort_query,
-    command=mis_effort_query(),
+    command=mis_effort_query(take_grid),
     description = "Read effort query"
   ),
   tar_target(
@@ -104,7 +102,11 @@ list(
   ),
   tar_target(
     name=take_effort,
-    command = grid_take_effort(sysbait_effort,take_grid,effort_raw,aerial_ops_tracks,ssg_formatted),
+    command = grid_take_effort(sysbait_effort,
+                               take_grid,
+                               effort_raw,
+                               aerial_ops_tracks,
+                               ssg_formatted),
     description = "Join effort, aerial ops tracks, and take data"
   ),
   # tar_target(
@@ -113,113 +115,152 @@ list(
   #   format="file",
   #   description="NFSP feral swine range data"
   # ),
+  # tar_target(
+  #   name=raw_ao_fy21,
+  #   command=file.path(raw_dir,"aerial_ops_tracks","FY2021 AERIAL OPS TRACK DATA.csv"),
+  #   format="file",
+  #   description="FY21 raw aerial ops track data"
+  # ),
+  # tar_target(
+  #   name=raw_ao_fy22,
+  #   command=file.path(raw_dir,"aerial_ops_tracks","FY2022 MO AERIAL OPS TRACK DATA.csv"),
+  #   format="file",
+  #   description="FY22 raw aerial ops track data"
+  # ),
+  # tar_target(
+  #   name=raw_ao_fy23,
+  #   command=file.path(raw_dir,"aerial_ops_tracks","FY2023 MO AERIAL OPS TRACK DATA.csv"),
+  #   format="file",
+  #   description="FY23 raw aerial ops track data"
+  # ),
+  # tar_target(
+  #   name=raw_ao_fy24,
+  #   command=file.path(raw_dir,"aerial_ops_tracks","FY24_MOFlightTracks.gdb"),
+  #   format="file",
+  #   description="FY24 raw aerial ops track data"
+  # ),
+  # tar_target(
+  #   name=raw_ao_dec24_mar25,
+  #   command=file.path(raw_dir,"aerial_ops_tracks","FlightTracks_Dec_MarchFY25.gdb"),
+  #   format="file",
+  #   description="Dec 2024 to Mar 2025 raw aerial ops track data"
+  # ),
   tar_target(
-    name=raw_ao_fy21,
-    command=file.path(raw_dir,"aerial_ops_tracks","FY2021 AERIAL OPS TRACK DATA.csv"),
+    name=raw_ao_folder,
+    command=file.path(raw_dir,"aerial_ops_tracks"),
     format="file",
-    description="FY21 raw aerial ops track data"
-  ),
-  tar_target(
-    name=raw_ao_fy22,
-    command=file.path(raw_dir,"aerial_ops_tracks","FY2022 MO AERIAL OPS TRACK DATA.csv"),
-    format="file",
-    description="FY22 raw aerial ops track data"
-  ),
-  tar_target(
-    name=raw_ao_fy23,
-    command=file.path(raw_dir,"aerial_ops_tracks","FY2023 MO AERIAL OPS TRACK DATA.csv"),
-    format="file",
-    description="FY23 raw aerial ops track data"
-  ),
-  tar_target(
-    name=raw_ao_fy24,
-    command=file.path(raw_dir,"aerial_ops_tracks","FY24_MOFlightTracks.gdb"),
-    format="file",
-    description="FY24 raw aerial ops track data"
+    description="Location of raw aerial ops track data"
   ),
   tar_target(
     name=aerial_ops_tracks,
-    command=clean_aerial_tracks(raw_ao_fy21,raw_ao_fy22,raw_ao_fy23,raw_ao_fy24,ssg_formatted),
-    description="Clean and collate raw aerial track data"
+    command=clean_aerial_tracks(#raw_ao_fy21,
+                                #raw_ao_fy22,
+                                #raw_ao_fy23,
+                                #raw_ao_fy24,
+                                #raw_ao_dec24_mar25,
+                                raw_ao_folder,
+                                ssg_formatted),
+    description="Read, clean, and collate raw aerial track data"
   ),
+  # tar_target(
+  #   name=raw_sys_sep20_dec22,
+  #   command=file.path(raw_dir,"sysbait","Ops_Sept2020_Dec2022.csv"),
+  #   format="file",
+  #   description="Sept20-Dec22 raw sysbait data"
+  # ),
+  # tar_target(
+  #   name=raw_sys_jan23_jun23,
+  #   command=file.path(raw_dir,"sysbait","Ops_Jan2023_Jun2023.csv"),
+  #   format="file",
+  #   description="Jan23-Jun22 raw sysbait data"
+  # ),
+  # tar_target(
+  #   name=raw_sys_jul23_nov23,
+  #   command=file.path(raw_dir,"sysbait","Ops_Jul2023_Nov2023.csv"),
+  #   format="file",
+  #   description="Jul23-Nov23 raw sysbait data"
+  # ),
+  # tar_target(
+  #   name=raw_sys_jul23_sep24,
+  #   command=file.path(raw_dir,"sysbait","Ops_July23_Sept24.csv"),
+  #   format="file",
+  #   description="Jul23-Sept24 raw sysbait data"
+  # ),
+  # tar_target(
+  #   name=raw_sys_oct24_dec24,
+  #   command=file.path(raw_dir,"sysbait","Ops_Oct24_Dec24.csv"),
+  #   format="file",
+  #   description="Oct24-Dec24 raw sysbait data"
+  # ),
   tar_target(
-    name=raw_sys_sep20_dec22,
-    command=file.path(raw_dir,"sysbait","Ops_Sept2020_Dec2022.csv"),
+    name=raw_sysbait_folder,
+    command=file.path(raw_dir,"sysbait"),
     format="file",
-    description="Sept20-Dec22 raw sysbait data"
+    description="Location of raw systematic baiting/ops files"
   ),
-  tar_target(
-    name=raw_sys_jan23_jun23,
-    command=file.path(raw_dir,"sysbait","Ops_Jan2023_Jun2023.csv"),
-    format="file",
-    description="Jan23-Jun22 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_sys_jul23_nov23,
-    command=file.path(raw_dir,"sysbait","Ops_Jul2023_Nov2023.csv"),
-    format="file",
-    description="Jul23-Nov23 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_sys_jul23_sep24,
-    command=file.path(raw_dir,"sysbait","Ops_July23_Sept24.csv"),
-    format="file",
-    description="Jul23-Sept24 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_sys_oct24_dec24,
-    command=file.path(raw_dir,"sysbait","Ops_Oct24_Dec24.csv"),
-    format="file",
-    description="Oct24-Dec24 raw sysbait data"
-  ),
-  
   ## data cleaning functions ----------------
   tar_target(
     name=sysbait_clean,
-    command=clean_sysbait(raw_sys_sep20_dec22,
-                          raw_sys_jan23_jun23,
-                          raw_sys_jul23_nov23,
-                          raw_sys_jul23_sep24,
-                          raw_sys_oct24_dec24),
-    description="Clean and collate raw sysbait data"
+    command=clean_sysbait(#raw_sys_sep20_dec22,
+                          #raw_sys_jan23_jun23,
+                          #raw_sys_jul23_nov23,
+                          #raw_sys_jul23_sep24,
+                          #raw_sys_oct24_dec24,
+                          #raw_systake_jan25_mar25_gdb,
+                          raw_sysbait_folder),
+    description="Read, clean and collate raw sysbait data"
   ),
+  # tar_target(
+  #   name=raw_take_sep20_dec22,
+  #   command=file.path(raw_dir,"take","Take_Sept2020_Dec2022.csv"),
+  #   format="file",
+  #   description="Sept20-Dec22 raw take data"
+  # ),
+  # tar_target(
+  #   name=raw_take_jan23_jun23,
+  #   command=file.path(raw_dir,"take","Take_Jan2023_Jun2023.csv"),
+  #   format="file",
+  #   description="Jan23-Jun22 raw take data"
+  # ),
+  # tar_target(
+  #   name=raw_take_jul23_nov23,
+  #   command=file.path(raw_dir,"take","Take_Jul2023_Nov2023.csv"),
+  #   format="file",
+  #   description="Jul23-Nov23 raw take data"
+  # ),
+  # tar_target(
+  #   name=raw_take_jul23_sep24,
+  #   command=file.path(raw_dir,"take","Take_July23_Sept24.csv"),
+  #   format="file",
+  #   description="Jul23-Sept24 raw take data"
+  # ),
+  # tar_target(
+  #   name=raw_take_oct24_dec24,
+  #   command=file.path(raw_dir,"take","MOFeralHogData_Oct24_Dec24.gdb"),
+  #   format="file",
+  #   description="Oct24-Dec24 raw take data"
+  # ),
+  # tar_target(
+  #   name=raw_systake_jan25_mar25_gdb,
+  #   command=file.path(raw_dir,"take","Q1CY2025_FeralHogData.gdb"),
+  #   format="file",
+  #   description="Oct24-Dec24 raw sys and take data"
+  # ),
   tar_target(
-    name=raw_take_sep20_dec22,
-    command=file.path(raw_dir,"take","Take_Sept2020_Dec2022.csv"),
+    name=raw_take_folder,
+    command=file.path(raw_dir,"take"),
     format="file",
-    description="Sept20-Dec22 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_take_jan23_jun23,
-    command=file.path(raw_dir,"take","Take_Jan2023_Jun2023.csv"),
-    format="file",
-    description="Jan23-Jun22 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_take_jul23_nov23,
-    command=file.path(raw_dir,"take","Take_Jul2023_Nov2023.csv"),
-    format="file",
-    description="Jul23-Nov23 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_take_jul23_sep24,
-    command=file.path(raw_dir,"take","Take_July23_Sept24.csv"),
-    format="file",
-    description="Jul23-Sept24 raw sysbait data"
-  ),
-  tar_target(
-    name=raw_take_oct24_dec24,
-    command=file.path(raw_dir,"take","MOFeralHogData_Oct24_Dec24.gdb"),
-    format="file",
-    description="Oct24-Dec24 raw take data"
+    description="Read, cocation of raw take data"
   ),
   tar_target(
     name=take_clean,
-    command=clean_take(raw_take_sep20_dec22,
-                       raw_take_jan23_jun23,
-                       raw_take_jul23_nov23,
-                       raw_take_jul23_sep24,
-                       raw_take_oct24_dec24,
+    command=clean_take(#raw_take_sep20_dec22,
+                       #raw_take_jan23_jun23,
+                       #raw_take_jul23_nov23,
+                       #raw_take_jul23_sep24,
+                       #raw_take_oct24_dec24,
+                       #raw_systake_jan25_mar25_gdb,
+                       raw_take_folder,
                        ssg_formatted),
     description="Clean and collate raw take data"
   ),
