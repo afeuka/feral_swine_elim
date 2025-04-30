@@ -28,8 +28,8 @@ tar_option_set(
   packages = c("sf", "tidyverse", "nimble","snow",
                "lubridate","ROracle","keyring",
                "tigris","amt","terra","exactextractr",
-               "pROC","gridExtra") # packages that your targets use
-  # controller = mcmc_controller
+               "pROC","gridExtra"), # packages that your targets use
+  controller = mcmc_controller
   # resources = tar_resources(
   #   crew = tar_resources_crew(controller = "local_controller")
   # )
@@ -337,7 +337,7 @@ list(
                             oak_siteid,
                             # eff_weeks=4,
                             chain_idx=chain_idx,
-                            niter=200000,
+                            niter=100000,
                             thin=5,
                             burnProp=0.8),
     description="Compile and fit occupancy/removal model",

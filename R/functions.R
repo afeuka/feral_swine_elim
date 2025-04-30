@@ -1135,6 +1135,7 @@ clean_sysbait <- function(#raw_sys_sep20_dec22,
 
   #clean systematic baiting -------------------------------
   for(i in 1:length(sys_files)){
+    if(grepl("csv",sys_files[i])){
       if(grepl("Sept2020",sys_files[i])){ #sys
         sys_list[[i]] <- read.csv(file.path(raw_sysbait_folder,sys_files[i]))
         
@@ -1163,19 +1164,19 @@ clean_sysbait <- function(#raw_sys_sep20_dec22,
                  CompleteDate=Complete.Date,
                  SounderSize=Sounder.Size) %>% 
           mutate(SounderSize=as.integer(SounderSize))
-
+        
         sys$BaitingStartDate <- as.Date(sys$BaitingStartDate,format="%m/%d/%Y %H:%M")
         sys$DateHotBait <- as.Date(sys$DateHotBait,format="%m/%d/%Y %H:%M")
         sys$CompleteDate <- as.Date(sys$CompleteDate,format="%m/%d/%Y %H:%M")
         sys$TrapStartDate <- as.Date(sys$TrapStartDate,format="%m/%d/%Y %H:%M")
         sys$SiteVisitDate <- as.Date(sys$SiteVisitDate,format="%m/%d/%Y %H:%M")
         sys$CreationDate <- as.Date(sys$CreationDate,format="%m/%d/%Y %H:%M")
-
+        
       } else if(grepl("Sept24",sys_files[i])){ #sys 3
         sys_list[[i]] <- read.csv(file.path(raw_sysbait_folder,sys_files[i]))
         sys_list[[i]] <- sys_list[[i]] %>% rename(Lat=lat,
-                                Long=long,
-                                SiteVisitReason=SiteVisitReas) %>% 
+                                                  Long=long,
+                                                  SiteVisitReason=SiteVisitReas) %>% 
           mutate(Lat=as.character(Lat),
                  Long=as.character(Long),
                  SounderSize) %>% 
@@ -1188,14 +1189,14 @@ clean_sysbait <- function(#raw_sys_sep20_dec22,
         sys_list[[i]]$TrapStartDate <- as.Date(sys_list[[i]]$TrapStartDate,format="%Y-%m-%d %H:%M:%S")
         sys_list[[i]]$SiteVisitDate <- as.Date(sys_list[[i]]$SiteVisitDate,format="%Y-%m-%d %H:%M:%S")
         sys_list[[i]]$CreationDate <- as.Date(sys_list[[i]]$CreationDate,format="%Y-%m-%d %H:%M:%S")
-      
+        
         sys <- full_join(sys,sys_list[[i]]) 
         
       } else if(grepl("Oct24",sys_files[i])){ #sys 4
         sys_list[[i]] <- read.csv(file.path(raw_sysbait_folder,sys_files[i]))
         
         sys_list[[i]] <- sys_list[[i]] %>% select(SiteStatus, BaitingStartDate, DateHotBait, SiteVisitDate, SiteVisitReason, TrapStartDate,
-                                CompleteDate, Lat, Long, CreationDate, Creator, SounderSize) %>% 
+                                                  CompleteDate, Lat, Long, CreationDate, Creator, SounderSize) %>% 
           mutate(Lat=as.character(Lat),
                  Long=as.character(Long))
         sys_list[[i]]$BaitingStartDate <-as.Date(sys_list[[i]]$BaitingStartDate,format="%Y-%m-%d")
@@ -1204,12 +1205,14 @@ clean_sysbait <- function(#raw_sys_sep20_dec22,
         sys_list[[i]]$TrapStartDate <- as.Date(sys_list[[i]]$TrapStartDate,format="%Y-%m-%d")
         sys_list[[i]]$SiteVisitDate <- as.Date(sys_list[[i]]$SiteVisitDate,format="%Y-%m-%d")
         sys_list[[i]]$CreationDate <- as.Date(sys_list[[i]]$CreationDate,format="%Y-%m-%d")
-       
+        
         sys <- full_join(sys,sys_list[[i]]) 
         
-      } else if(grepl("Q1CY2025",sys_files[i])){ #sys5
+      }
+    } else if(grepl("gdb",sys_files[i])){
+      if(grepl("Q1CY2025",sys_files[i])){ #sys5
         sys_list[[i]] <- st_read(file.path(raw_sysbait_folder,sys_files[i]),
-                        layer="Q12025_FeralHogOps")
+                                 layer="Q12025_FeralHogOps")
         
         sys_list[[i]] <- sys_list[[i]] %>% st_transform("epsg:4326")
         sys_coords <- st_coordinates(sys_list[[i]])
@@ -1233,9 +1236,40 @@ clean_sysbait <- function(#raw_sys_sep20_dec22,
         sys_list[[i]]$CreationDate <- as.Date(sys_list[[i]]$CreationDate,format="%Y-%m-%d")
         
         sys <- full_join(sys,sys_list[[i]])
-      } else {
-        stop("New data detected, edit clean_sysbait() target to add cleaning code")
+      } else { #new gdbs
+        layer_name <- st_layers(file.path(raw_sysbait_folder,sys_files[i]))
+        layer_name <- layer_name[which(grepl("ops",layer_name) |
+                                         grepl("Ops",layer_name) |
+                                         grepl("OPS",layer_name))]
+        sys_list[[i]] <- st_read(file.path(raw_sysbait_folder,sys_files[i]),
+                                 layer=layer_name)
+        
+        sys_list[[i]] <- sys_list[[i]] %>% st_transform("epsg:4326")
+        sys_coords <- st_coordinates(sys_list[[i]])
+        sys_list[[i]]$Lat <- sys_coords[,2]
+        sys_list[[i]]$Long <- sys_coords[,1]
+        sys_list[[i]] <- sys_list[[i]] %>% st_drop_geometry()
+        
+        sys_list[[i]] <- sys_list[[i]] %>% 
+          rename(SiteVisitReason=SiteVisitReas) %>% 
+          select(SiteStatus, BaitingStartDate, DateHotBait, 
+                 SiteVisitDate, SiteVisitReason, TrapStartDate,
+                 CompleteDate, Lat, Long, CreationDate, Creator, SounderSize) %>% 
+          mutate(Lat=as.character(Lat),
+                 Long=as.character(Long))
+        
+        sys_list[[i]]$BaitingStartDate <-as.Date(sys_list[[i]]$BaitingStartDate,format="%Y-%m-%d")
+        sys_list[[i]]$DateHotBait <- as.Date(sys_list[[i]]$DateHotBait,format="%Y-%m-%d")
+        sys_list[[i]]$CompleteDate <- as.Date(sys_list[[i]]$CompleteDate,format="%Y-%m-%d")
+        sys_list[[i]]$TrapStartDate <- as.Date(sys_list[[i]]$TrapStartDate,format="%Y-%m-%d")
+        sys_list[[i]]$SiteVisitDate <- as.Date(sys_list[[i]]$SiteVisitDate,format="%Y-%m-%d")
+        sys_list[[i]]$CreationDate <- as.Date(sys_list[[i]]$CreationDate,format="%Y-%m-%d")
+        
+        sys <- full_join(sys,sys_list[[i]])
       }
+    } else {
+      stop("New data not csv or gdb, edit clean_sysbait() target to read new files.")
+    }
   }#end file loop
 
   sys
@@ -1259,177 +1293,211 @@ clean_take <- function(#raw_take_sep20_dec22,
 
   #clean take-------------------------------
   for(i in 1:length(take_files)){
-    if(grepl("Sept2020",take_files[i])){
-      take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
-      take_list[[i]] <- as.data.frame(take_list[[i]] %>% select(-c(OBJECTID..,Shape..,GlobalID..)))
-      take_list[[i]] <- take_list[[i]][,!grepl("UAV",colnames(take_list[[i]]))]
-      take_list[[i]] <- take_list[[i]][,!grepl("Minutes",colnames(take_list[[i]]))]
-      take_list[[i]] <- as.data.frame(take_list[[i]] %>%
-                               rename(Date=Take.Date,
-                                      Total=Total.Take,
-                                      Adult_M=Adult.Male.Take,
-                                      Adult_F=Adult.Female.Take,
-                                      Method=Method.Type,
-                                      NonBreed_F=Non.Breeding.Female.Take,
-                                      NonBreed_M=Non.Breeding.Male.Take))
-      take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
-      take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
-      take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
-      take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
-      take_list[[i]] <- take_list[[i]] %>%
-        mutate(Trapper.Name=toupper(Trapper.Name),
-               created_user=toupper(created_user),
-               last_edited_user=toupper(last_edited_user),
-               Comments=toupper(Comments))
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
-
-    } else if(grepl("Jan2023",take_files[i]) ){
-      take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
-      take_list[[i]] <- as.data.frame(take_list[[i]] %>% select(-c(OBJECTID..,Shape..,GlobalID..)))
-      take_list[[i]] <- take_list[[i]] %>% select(-grep("UAV",colnames(take_list[[i]])))
-      take_list[[i]] <- as.data.frame(take_list[[i]] %>% rename(Method=Method.Type,
-                                              Total=Total.Take,
-                                              Date=Take.Date,
-                                              Adult_M=Adult.Male.Take,
-                                              Adult_F=Adult.Female.Take,
-                                              NonBreed_M=Non.Breeding.Male.Take,
-                                              NonBreed_F=Non.Breeding.Female.Take))
-      take_list[[i]]$Total <- as.numeric(take_list[[i]]$Total)
-      take_list[[i]]$Adult_M <- as.numeric(take_list[[i]]$Adult_M)
-      take_list[[i]]$Adult_F <- as.numeric(take_list[[i]]$Adult_F)
-      take_list[[i]]$NonBreed_M <- as.numeric(take_list[[i]]$NonBreed_M)
-      take_list[[i]]$NonBreed_F <- as.numeric(take_list[[i]]$NonBreed_F)
-
-      take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
-      take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
-      take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
-      take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
-      take_list[[i]] <- take_list[[i]] %>%
-        select(-Minutes.of.Effort) %>%
-        mutate(Trapper.Name=toupper(Trapper.Name),
-               created_user=toupper(created_user),
-               last_edited_user=toupper(last_edited_user),
-               Comments=toupper(Comments))
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
-
-      take <- full_join(take_list[[i-1]],take_list[[i]])
-      colnames(take) <- unlist(lapply(colnames(take),charsub))
-      
-    } else if(grepl("Nov2023",take_files[i])){
-      take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
-      colnames(take_list[[i]]) <- unlist(lapply(colnames(take_list[[i]]),charsub))
-      charsub_ <- function(x){gsub("__","_",x)}
-      colnames(take_list[[i]]) <- unlist(lapply(colnames(take_list[[i]]),charsub_))
-
-      take_list[[i]] <- take_list[[i]] %>%
-        rename(Date=Take_Date,
-               Total=Total_Take,
-               Adult_M=Adult_Male_Take,
-               Adult_F=Adult_Female_Take,
-               Method=Method_Type,
-               NonBreed_F=Non_Breeding_Female_Take,
-               NonBreed_M=Non_Breeding_Male_Take) %>%
-        select(-c(GlobalID_,UAV_Used,Minutes_of_UAV_Flight,
-                  Primary_Shooter_UAV_,Secondary_Shooter_UAV_,Pilot_Name_UAV_,Minutes_of_Effort,
-                  OBJECTID_,Shape_)) %>%
-        mutate(Trapper_Name=toupper(Trapper_Name),
-               Comments=toupper(Comments))
-
-      take_list[[i]]$Total <- as.numeric(take_list[[i]]$Total)
-      take_list[[i]]$Adult_M <- as.numeric(take_list[[i]]$Adult_M)
-      take_list[[i]]$Adult_F <- as.numeric(take_list[[i]]$Adult_F)
-      take_list[[i]]$NonBreed_M <- as.numeric(take_list[[i]]$NonBreed_M)
-      take_list[[i]]$NonBreed_F <- as.numeric(take_list[[i]]$NonBreed_F)
-
-      take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
-      take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
-      take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
-      take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
-
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
-      # colnames(take_list[[i]])[!colnames(take_list[[i]])%in%colnames(take)]
-
-      take <- full_join(take,take_list[[i]])
-
-    } else if(grepl("Sept24",take_files[i])){
-      take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
-      take_list[[i]] <- take_list[[i]] %>% rename(Date=Take_Date,
-                                Total=Total_Take,
-                                Adult_M=Adult_Male_Take,
-                                Adult_F=Adult_Female_Take,
-                                NonBreed_F=NonBreeding_Female_Take,
-                                NonBreed_M=NonBreeding_Male_Take,
-                                Long=long,
-                                Lat=lat,
-                                Feral_Domestic_Pot_belly=FeralDomestic_Potbelly,
-                                Method=Method_Type) %>%
-        select(-c(X,GlobalID,UAV_Used,Minutes_UAV_Flight,
-                  Primary_Shooter_UAV,Secondary_Shooter_UAV,Pilot_Name_UAV,Minutes_of_Effort)) %>%
-        mutate(Trapper_Name=toupper(Trapper_Name),
-               created_user=toupper(created_user),
-               last_edited_user=toupper(last_edited_user),
-               Comments=toupper(Comments))
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
-
-      take <- full_join(take,take_list[[i]])
-
-    } else if(grepl("Oct24",take_files[i])){
-      take_list[[i]] <- st_read(file.path(raw_take_folder,take_files[i]),
-                                layer="FeralHogTake_Oct24_Dec24")
-      take_list[[i]] <- take_list[[i]] %>%
-        rename(Trapper_Name=Trapper_Name,
-               Method=Method_Type,
-               Date=Take_Date,
-               Total=Total_Take,
-               Adult_M=Adult_Male_Take,
-               Adult_F=Adult_Female_Take,
-               NonBreed_M=NonBreeding_Male_Take ,
-               NonBreed_F=NonBreeding_Female_Take ,
-               Feral_Domestic_Pot_belly=FeralDomestic_Potbelly) %>%
-        st_transform(crs="epsg:4326") %>%
-        mutate(created_date=as.character(created_date),
-               last_edited_date=as.character(last_edited_date))
-
-      take_coords <- st_coordinates(take_list[[i]])
-      take_list[[i]]$Lat <- take_coords[,2]
-      take_list[[i]]$Long <- take_coords[,1]
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
-
-      take_list[[i]] <- take_list[[i]] %>%
-        select(colnames(take_list[[i]])[colnames(take_list[[i]])%in%colnames(take_list[[i-1]])])
-
-      take <- full_join(take,take_list[[i]])
-
-    } else if(grepl("Q1CY2025",take_files[i])){
-      # st_layers('C:/Users/Abigail.Feuka/OneDrive - USDA/Feral Hogs/Missouri/Data/Take/Q1CY2025_FeralHogData.gdb')
-      take_list[[i]] <- st_read(file.path(raw_take_folder,take_files[i]),
-                       layer="Q12025_FeralHogTake")
-      take_list[[i]] <- take_list[[i]] %>%
-        rename(Trapper_Name=Trapper_Name,
-               Method=Method_Type,
-               Date=Take_Date,
-               Total=Total_Take,
-               Adult_M=Adult_Male_Take,
-               Adult_F=Adult_Female_Take,
-               NonBreed_M=NonBreeding_Male_Take ,
-               NonBreed_F=NonBreeding_Female_Take ,
-               Feral_Domestic_Pot_belly=FeralDomestic_Potbelly) %>%
-        st_transform(crs="epsg:4326") %>%
-        mutate(created_date=as.character(created_date),
-               last_edited_date=as.character(last_edited_date))
-
-      take_coords <- st_coordinates(take_list[[i]])
-      take_list[[i]]$Lat <- take_coords[,2]
-      take_list[[i]]$Long <- take_coords[,1]
-      take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
-
-      take_list[[i]] <- take_list[[i]] %>%
-        select(colnames(take_list[[i]])[colnames(take_list[[i]])%in%colnames(take_list[[i-1]])])
-
-      take <- full_join(take,take_list[[i]])
-
-    } else {
-      print(stop("New data detected, edit clean_take() target to add cleaning code"))
+    if(grepl("csv",take_files[i])){
+      if(grepl("Sept2020",take_files[i])){
+        take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
+        take_list[[i]] <- as.data.frame(take_list[[i]] %>% select(-c(OBJECTID..,Shape..,GlobalID..)))
+        take_list[[i]] <- take_list[[i]][,!grepl("UAV",colnames(take_list[[i]]))]
+        take_list[[i]] <- take_list[[i]][,!grepl("Minutes",colnames(take_list[[i]]))]
+        take_list[[i]] <- as.data.frame(take_list[[i]] %>%
+                                          rename(Date=Take.Date,
+                                                 Total=Total.Take,
+                                                 Adult_M=Adult.Male.Take,
+                                                 Adult_F=Adult.Female.Take,
+                                                 Method=Method.Type,
+                                                 NonBreed_F=Non.Breeding.Female.Take,
+                                                 NonBreed_M=Non.Breeding.Male.Take))
+        take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
+        take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
+        take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
+        take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
+        take_list[[i]] <- take_list[[i]] %>%
+          mutate(Trapper.Name=toupper(Trapper.Name),
+                 created_user=toupper(created_user),
+                 last_edited_user=toupper(last_edited_user),
+                 Comments=toupper(Comments))
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
+        
+      } else if(grepl("Jan2023",take_files[i]) ){
+        take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
+        take_list[[i]] <- as.data.frame(take_list[[i]] %>% select(-c(OBJECTID..,Shape..,GlobalID..)))
+        take_list[[i]] <- take_list[[i]] %>% select(-grep("UAV",colnames(take_list[[i]])))
+        take_list[[i]] <- as.data.frame(take_list[[i]] %>% rename(Method=Method.Type,
+                                                                  Total=Total.Take,
+                                                                  Date=Take.Date,
+                                                                  Adult_M=Adult.Male.Take,
+                                                                  Adult_F=Adult.Female.Take,
+                                                                  NonBreed_M=Non.Breeding.Male.Take,
+                                                                  NonBreed_F=Non.Breeding.Female.Take))
+        take_list[[i]]$Total <- as.numeric(take_list[[i]]$Total)
+        take_list[[i]]$Adult_M <- as.numeric(take_list[[i]]$Adult_M)
+        take_list[[i]]$Adult_F <- as.numeric(take_list[[i]]$Adult_F)
+        take_list[[i]]$NonBreed_M <- as.numeric(take_list[[i]]$NonBreed_M)
+        take_list[[i]]$NonBreed_F <- as.numeric(take_list[[i]]$NonBreed_F)
+        
+        take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
+        take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
+        take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
+        take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
+        take_list[[i]] <- take_list[[i]] %>%
+          select(-Minutes.of.Effort) %>%
+          mutate(Trapper.Name=toupper(Trapper.Name),
+                 created_user=toupper(created_user),
+                 last_edited_user=toupper(last_edited_user),
+                 Comments=toupper(Comments))
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
+        
+        take <- full_join(take_list[[i-1]],take_list[[i]])
+        colnames(take) <- unlist(lapply(colnames(take),charsub))
+        
+      } else if(grepl("Nov2023",take_files[i])){
+        take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
+        colnames(take_list[[i]]) <- unlist(lapply(colnames(take_list[[i]]),charsub))
+        charsub_ <- function(x){gsub("__","_",x)}
+        colnames(take_list[[i]]) <- unlist(lapply(colnames(take_list[[i]]),charsub_))
+        
+        take_list[[i]] <- take_list[[i]] %>%
+          rename(Date=Take_Date,
+                 Total=Total_Take,
+                 Adult_M=Adult_Male_Take,
+                 Adult_F=Adult_Female_Take,
+                 Method=Method_Type,
+                 NonBreed_F=Non_Breeding_Female_Take,
+                 NonBreed_M=Non_Breeding_Male_Take) %>%
+          select(-c(GlobalID_,UAV_Used,Minutes_of_UAV_Flight,
+                    Primary_Shooter_UAV_,Secondary_Shooter_UAV_,Pilot_Name_UAV_,Minutes_of_Effort,
+                    OBJECTID_,Shape_)) %>%
+          mutate(Trapper_Name=toupper(Trapper_Name),
+                 Comments=toupper(Comments))
+        
+        take_list[[i]]$Total <- as.numeric(take_list[[i]]$Total)
+        take_list[[i]]$Adult_M <- as.numeric(take_list[[i]]$Adult_M)
+        take_list[[i]]$Adult_F <- as.numeric(take_list[[i]]$Adult_F)
+        take_list[[i]]$NonBreed_M <- as.numeric(take_list[[i]]$NonBreed_M)
+        take_list[[i]]$NonBreed_F <- as.numeric(take_list[[i]]$NonBreed_F)
+        
+        take_list[[i]]$Males <- take_list[[i]]$Adult_M+take_list[[i]]$NonBreed_M
+        take_list[[i]]$Females <- take_list[[i]]$Adult_F+take_list[[i]]$NonBreed_F
+        take_list[[i]]$Adults <- take_list[[i]]$Adult_M+take_list[[i]]$Adult_F
+        take_list[[i]]$Sub_adults <- take_list[[i]]$NonBreed_F+take_list[[i]]$NonBreed_M #sub-adults = sub-adults and juveniles
+        
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%m/%d/%Y %H:%M",tz="CST6CDT")
+        # colnames(take_list[[i]])[!colnames(take_list[[i]])%in%colnames(take)]
+        
+        take <- full_join(take,take_list[[i]])
+        
+      } else if(grepl("Sept24",take_files[i])){
+        take_list[[i]] <- read.csv(file.path(raw_take_folder,take_files[i]))
+        take_list[[i]] <- take_list[[i]] %>% rename(Date=Take_Date,
+                                                    Total=Total_Take,
+                                                    Adult_M=Adult_Male_Take,
+                                                    Adult_F=Adult_Female_Take,
+                                                    NonBreed_F=NonBreeding_Female_Take,
+                                                    NonBreed_M=NonBreeding_Male_Take,
+                                                    Long=long,
+                                                    Lat=lat,
+                                                    Feral_Domestic_Pot_belly=FeralDomestic_Potbelly,
+                                                    Method=Method_Type) %>%
+          select(-c(X,GlobalID,UAV_Used,Minutes_UAV_Flight,
+                    Primary_Shooter_UAV,Secondary_Shooter_UAV,Pilot_Name_UAV,Minutes_of_Effort)) %>%
+          mutate(Trapper_Name=toupper(Trapper_Name),
+                 created_user=toupper(created_user),
+                 last_edited_user=toupper(last_edited_user),
+                 Comments=toupper(Comments))
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
+        
+        take <- full_join(take,take_list[[i]])
+        
+      } else if(grepl("Oct24",take_files[i])){
+        take_list[[i]] <- st_read(file.path(raw_take_folder,take_files[i]),
+                                  layer="FeralHogTake_Oct24_Dec24")
+        take_list[[i]] <- take_list[[i]] %>%
+          rename(Trapper_Name=Trapper_Name,
+                 Method=Method_Type,
+                 Date=Take_Date,
+                 Total=Total_Take,
+                 Adult_M=Adult_Male_Take,
+                 Adult_F=Adult_Female_Take,
+                 NonBreed_M=NonBreeding_Male_Take ,
+                 NonBreed_F=NonBreeding_Female_Take ,
+                 Feral_Domestic_Pot_belly=FeralDomestic_Potbelly) %>%
+          st_transform(crs="epsg:4326") %>%
+          mutate(created_date=as.character(created_date),
+                 last_edited_date=as.character(last_edited_date))
+        
+        take_coords <- st_coordinates(take_list[[i]])
+        take_list[[i]]$Lat <- take_coords[,2]
+        take_list[[i]]$Long <- take_coords[,1]
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
+        
+        take_list[[i]] <- take_list[[i]] %>%
+          select(colnames(take_list[[i]])[colnames(take_list[[i]])%in%colnames(take_list[[i-1]])])
+        
+        take <- full_join(take,take_list[[i]])
+        
+      }
+    } else if(grepl("gdb",take_files[i])){
+      if(grepl("Q1CY2025",take_files[i])){
+        take_list[[i]] <- st_read(file.path(raw_take_folder,take_files[i]),
+                                  layer="Q12025_FeralHogTake")
+        take_list[[i]] <- take_list[[i]] %>%
+          rename(Trapper_Name=Trapper_Name,
+                 Method=Method_Type,
+                 Date=Take_Date,
+                 Total=Total_Take,
+                 Adult_M=Adult_Male_Take,
+                 Adult_F=Adult_Female_Take,
+                 NonBreed_M=NonBreeding_Male_Take ,
+                 NonBreed_F=NonBreeding_Female_Take ,
+                 Feral_Domestic_Pot_belly=FeralDomestic_Potbelly) %>%
+          st_transform(crs="epsg:4326") %>%
+          mutate(created_date=as.character(created_date),
+                 last_edited_date=as.character(last_edited_date))
+        
+        take_coords <- st_coordinates(take_list[[i]])
+        take_list[[i]]$Lat <- take_coords[,2]
+        take_list[[i]]$Long <- take_coords[,1]
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
+        
+        take_list[[i]] <- take_list[[i]] %>%
+          select(colnames(take_list[[i]])[colnames(take_list[[i]])%in%colnames(take_list[[i-1]])])
+        
+        take <- full_join(take,take_list[[i]])
+        
+      } else { #other gdb
+        layer_name <- st_layers(file.path(raw_take_folder,take_files[i]))
+        layer_name <- layer_name[which(grepl("take",layer_name) |
+                                         grepl("Take",layer_name) |
+                                         grepl("TAKE",layer_name))]
+        
+        take_list[[i]] <- st_read(file.path(raw_take_folder,take_files[i]),
+                                  layer=layer_name)
+        take_list[[i]] <- take_list[[i]] %>%
+          rename(Trapper_Name=Trapper_Name,
+                 Method=Method_Type,
+                 Date=Take_Date,
+                 Total=Total_Take,
+                 Adult_M=Adult_Male_Take,
+                 Adult_F=Adult_Female_Take,
+                 NonBreed_M=NonBreeding_Male_Take ,
+                 NonBreed_F=NonBreeding_Female_Take ,
+                 Feral_Domestic_Pot_belly=FeralDomestic_Potbelly) %>%
+          st_transform(crs="epsg:4326") %>%
+          mutate(created_date=as.character(created_date),
+                 last_edited_date=as.character(last_edited_date))
+        
+        take_coords <- st_coordinates(take_list[[i]])
+        take_list[[i]]$Lat <- take_coords[,2]
+        take_list[[i]]$Long <- take_coords[,1]
+        take_list[[i]]$Date <- as.POSIXct(take_list[[i]]$Date,format="%Y-%m-%d %H:%M:%S",tz="CST6CDT")
+        
+        take_list[[i]] <- take_list[[i]] %>%
+          select(colnames(take_list[[i]])[colnames(take_list[[i]])%in%colnames(take_list[[i-1]])])
+        
+        take <- full_join(take,take_list[[i]])
+      }
+    }else {
+      stop("New data not csv or gdb, edit clean_take() target to read new files.")
     }
   }
 

@@ -38,26 +38,12 @@ raw_sys_jul23_sep24|stem|98298372e4795c3f|fce66f38ebb3c6cc|f602c2449499ec73|1374
 nlcd_raster|stem|5d1e86bb1f8b62e5|205055bef128004b|f602c2449499ec73|1021055253|./data/raw/nlcd/NLCD_2019_Land_Cover_L48_20210604_jj2pnCpncP4xHk8rj4R5.tiff|t19552.9544272181s|s425254651b|425254651|file|local|vector|||0||
 raw_sys_jul23_nov23|stem|ea875cc7435339f8|0428b4041279d1d8|f602c2449499ec73|942608599|./data/raw/sysbait/Ops_Jul2023_Nov2023.csv|t19674.8741084231s|s352980b|352980|file|local|vector|||0||
 raw_sys_oct24_dec24|stem|d123ec176bab0209|5b9e4d02d11cda9b|f602c2449499ec73|1460542044|./data/raw/sysbait/Ops_Oct24_Dec24.csv|t20166.6488327081s|s395034b|395034|file|local|vector|||0||
-dat_rem|stem|90836953d504ad8c|43f3363eb042e882|d6d86bfedba555a7|-938537672||t20174.7275066013s|s61093b|61093|rds|local|vector|||0.12||
-site_idx_lookup|stem|dfe5f9e38a3373f8|49fae7a4a0e83c1f|b13b420ca52ddbb4|317771321||t20174.7275069916s|s490b|490|rds|local|vector|||0||
 local_controller|object|0f4c2adae3a2e230|||||||||||||||
 samples_5462f1638ce7956d|branch|bac7c84b6341908e|36cf3ff3dc935c81|22b91b9e1e87ddb8|1253120668||t20195.6320920274s|s131412177b|131412177|rds|local|vector|samples||1809.625|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 samples_e8c5c3a1642e90b4|branch|9c94e44ea032af07|36cf3ff3dc935c81|22b91b9e1e87ddb8|2013235222||t20195.632693507s|s130811779b|130811779|rds|local|vector|samples||1807.234|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 samples_808e0b0010c86726|branch|0b704e894f62716d|36cf3ff3dc935c81|22b91b9e1e87ddb8|194330080||t20195.6328267256s|s130783379b|130783379|rds|local|vector|samples||1832.922|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 samples_2fc8e6492850a3d3|branch|d5dbfadafaf96700|36cf3ff3dc935c81|22b91b9e1e87ddb8|1845263558||t20195.6505536911s|s131178429b|131178429|rds|local|vector|samples||1583|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 samples_648bae623f0114d2|branch|2516fb3d6e755930|36cf3ff3dc935c81|22b91b9e1e87ddb8|-1368806507||t20195.6515376619s|s131004382b|131004382|rds|local|vector|samples||1617.172|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples_6a7beae6237c8c08|branch|2ded365ec290e12a|232465ff9a618263|b0dc9d7c917859eb|763494999||t20195.7793131189s|s423336139b|423336139|rds|local|vector|samples||3153.172|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples_9838bd590d9a6a49|branch|fb569a948176e888|232465ff9a618263|b0dc9d7c917859eb|-1203821932||t20195.7796833485s|s423537573b|423537573|rds|local|vector|samples||3172.125|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples_34f0237c314b2aba|branch|c9d700064d01be63|232465ff9a618263|b0dc9d7c917859eb|341238872||t20195.7800542605s|s422658124b|422658124|rds|local|vector|samples||3153.532|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-samples|pattern|81daf45390c4258f|232465ff9a618263||1609165135||||1269531836|rds|local|vector||samples_9838bd590d9a6a49*samples_6a7beae6237c8c08*samples_34f0237c314b2aba|9478.829||
-removal_prob_plots|stem|25a7b28d29546817|482009c2e746f295|29aed91c02a5c213|1290114349||t20195.7802481009s|s29717b|29717|rds|local|vector|||4.468||
-abundance_plots|stem|544232566c51415f|ff8933739bfd81d4|99db2ab41dd166dc|1784815996||t20195.7822769072s|s257502b|257502|rds|local|vector|||163.781|NAs produced|
-pabs_plots|stem|703960f2adc40152|937ca496bfd89c6f|ed697699f8bc1abe|-1370887671||t20195.7974286939s|s59266431b|59266431|rds|local|vector|||1292|attribute variables are assumed to be spatially constant throughout all geometries|
-det_plot|stem|877fd5cb8682e3e0|6c6cd7991be13dba|d13cc829744199d3|-2113591127||t20195.8007967063s|s1180b|1180|rds|local|vector|||1.468||
-elim_samp_plot|stem|4689582be97b8064|9811939eabc6aaaa|40721f591a191690|-350873110||t20195.8014933808s|s551b|551|rds|local|vector|||6.063||
-data_plots|stem|6e140ed9a58a961e|6ce6fe3157b979db|4ddac3fba646f847|-1715264339||t20195.8019409053s|s95b|95|rds|local|vector|||2.281||
-trace_plots|stem|ad6f2f394921456c|6c73400e09316942|25c0d2f107033c2b|-1890721789||t20195.8139607219s|s3170b|3170|rds|local|vector|||6.515||
-wi_mod_val|stem|4d2e613b20c25615|dd822a6ecd435a6d|c191dfd1b92eb9c4|-38965719||t20195.8147626389s|s327b|327|rds|local|vector|||58.5||
 chain_idx|stem|c0c331d1fd2beeb6|2c68bb5885d0b0ad|dd79586292057c77|2014838078||t20207.780384053s|s99b|99|rds|local|vector||chain_idx_6e95f3b2b5476d92*chain_idx_b3a2147ad240fae3*chain_idx_f5968f8186dadba0|0||
 ssg_formatted|stem|26895e240cc66a53|f1a313956926f406|bc6c05ae3a95681e|-1247696189||t20207.7803917187s|s9037886b|9037886|rds|local|vector|||0.094||
 raw_ao_folder|stem|0a805e81c7fc3a5f|7053f639b02ec796|f602c2449499ec73|-318887849|./data/raw/aerial_ops_tracks|t20207.7749552387s|s4096b|4096|file|local|vector|||4.281|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
@@ -72,49 +58,17 @@ nlcd_siteid|stem|f7cfd62762ca5aa2|038039178674b0ca|2e2052a85eca8538|827838860||t
 raw_take_folder|stem|fe58534fddafbe1c|50bde4adb3a27322|f602c2449499ec73|-1483592348|./data/raw/take|t20207.9082489564s|s4096b|4096|file|local|vector|||3.422|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
 sysbait_clean|stem|ac5f618b5494bbd7|178a92bad6bfbcc7|1afa4b90001b0f24|395096418||t20207.9210784558s|s384164b|384164|rds|local|vector|||1.172|There was 1 warning in mutate.ℹ In argument SounderSize  as.integerSounderSize.Caused by warning NAs introduced by coercion|
 take_clean|stem|5cea6b78143079b6|4c2ea4b7f6f90060|10a9d9113e780438|-311836466||t20207.9264599957s|s174463b|174463|rds|local|vector|||2.172|NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries|
-.Random.seed|object|c3b919018a2fd964|||||||||||||||
-clean_take|function|a4d2a27f6998b4f3|||||||||||||||
-grid_sysbait_effort|function|d89dde2238f15bb9|||||||||||||||
-pull_effort_mis|function|fd1ef91e0be8a83f|||||||||||||||
-model_validation|function|c3ec20cd56c32525|||||||||||||||
-format_ssg|function|1bef4d8d7443d6cb|||||||||||||||
-plot_removal_prob|function|53949fd4242e0f02|||||||||||||||
-occ_data_prep|function|6de27b789625e3af|||||||||||||||
-plot_trace|function|6153ce02618e1957|||||||||||||||
-out_dir|object|6788352ad7f4224f|||||||||||||||
-extract_nlcd|function|e834f7ff1f0c9cd1|||||||||||||||
-mis_effort_query|function|c3ee63d36919c967|||||||||||||||
-input_dir|object|f41a9421041c5b2a|||||||||||||||
-fit_zibinom_mod|function|ea83fc73ffe87410|||||||||||||||
-grid_take_effort|function|3da0b7ecbd5a7e9d|||||||||||||||
-make_chain_idx|function|1cda52a08f9f6cf2|||||||||||||||
-raw_dir|object|5088448f63d62dee|||||||||||||||
-plot_abundance|function|2e993c2a42419edf|||||||||||||||
-extract_oak|function|fe2ccf5c34ae520c|||||||||||||||
-align_sites|function|c1d747c94bef3587|||||||||||||||
-plot_elim_samp|function|e6239313a5fbec94|||||||||||||||
-grid_sysbait|function|5ab1f93036685ca2|||||||||||||||
-mcmc_controller|object|38391f4600c42f16|||||||||||||||
-plot_pabs|function|2d54def1ff481411|||||||||||||||
-nimble_fun_avail|function|f1fa1236ced46e80|||||||||||||||
-make_elim_areas|function|2e4f9ff3740cf2d7|||||||||||||||
-plot_data|function|f092199fee3768c4|||||||||||||||
-rem_data_prep|function|c81e7ecdf32c53f7|||||||||||||||
-clean_aerial_tracks|function|158998651c6582f8|||||||||||||||
-site_lat_longs|function|0bd46459943aa91c|||||||||||||||
-grid_removals|function|b455c3da7bad3c4a|||||||||||||||
-plot_det|function|0afeeb85f2d91cfe|||||||||||||||
-clean_sysbait|function|2e8609caeda102d5|||||||||||||||
-format_sec|function|eb8856a119d2191f|||||||||||||||
 avail_fun|stem|d0155f3fcfd2e4da|1529a0bc1b7e8303|eb6c0194533046d4|-1919449248||t20207.939229074s|s389309b|389309|rds|local|vector|||3.203|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
-sysbait_grid|stem|0ce6e5a069103aea|37969e24e4064fd0|c8085df504dcd5bb|-1270728549||t20207.9396286471s|s29240b|29240|rds|local|vector|||33.469|NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
-take_grid|stem|787adc4b26a036aa|d6ea711d68235a89|16e0e06b8b0cdeff|-728214767||t20207.9396849185s|s93349b|93349|rds|local|vector|||4.797|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
-effort_query|stem|1577c3e22afb5fa3|bf70d3ed12f4ebba|461191babdbc5fff|1247403759||t20207.9396852079s|s500b|500|rds|local|vector|||0||
 effort_raw|stem|402828c8c666e7f1|439101a4d15f0d94|4b07cadd0166133c|1777935539||t20207.9398376259s|s63831b|63831|rds|local|vector|||13.14|NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion. NAs introduced by coercion|
-sysbait_effort|stem|91bf981dfb5cae0f|5a161c47fe2f98cb|4bacad61da322259|-1980835277||t20207.9417397019s|s1526901527b|1526901527|rds|local|vector|||80.015||
-dat_occ|stem|7c692698cd94e5e2|26fa2f713ac934ea|6c2e44bfcc0f6a85|1335377113||t20207.941756345s|s30054b|30054|rds|local|vector|||0.688||
-take_effort|stem|5f0e2c8a1a130159|5462e351c17494c4|8006b9f416972a7e|1078299164||t20174.6929917439s||47109|rds|local|vector|||28.5||replacement has length zero
-.Random.seed|object|3b4af9157370b27f
+sysbait_grid|stem|f8bc6de6b529eb57|37969e24e4064fd0|9ee0aa534c8976dc|-1270728549||t20207.9516562929s|s30420b|30420|rds|local|vector|||34.563|NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+take_grid|stem|91fe3abe73f28fa9|d6ea711d68235a89|eccea6701d28dc59|-728214767||t20207.9517139196s|s100238b|100238|rds|local|vector|||4.937|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
+effort_query|stem|1577c3e22afb5fa3|bf70d3ed12f4ebba|5931418de493fd3f|1247403759||t20207.9517142552s|s500b|500|rds|local|vector|||0||
+sysbait_effort|stem|688e7ba401daf96f|5a161c47fe2f98cb|32c12734b56fa1e0|-1980835277||t20207.9537242783s|s1617249040b|1617249040|rds|local|vector|||83.375||
+dat_occ|stem|1adc7ae4b51f6191|26fa2f713ac934ea|2081fb8286a7402b|1335377113||t20207.9537419604s|s31582b|31582|rds|local|vector|||0.734||
+take_effort|stem|d0915e52755c8377|5462e351c17494c4|d0449629aa1a2eba|1078299164||t20207.9541123329s|s52737b|52737|rds|local|vector|||31.968||
+dat_rem|stem|92b6f536b1c33b9f|43f3363eb042e882|8440c75ce5f4fb1e|-938537672||t20207.9541130701s|s53589b|53589|rds|local|vector|||0.031||
+site_idx_lookup|stem|dfe5f9e38a3373f8|49fae7a4a0e83c1f|3f002fa6db9ec0a5|317771321||t20207.9541133595s|s490b|490|rds|local|vector|||0||
+.Random.seed|object|0de5208262dce0a6
 clean_take|function|a4d2a27f6998b4f3
 grid_sysbait_effort|function|d89dde2238f15bb9
 pull_effort_mis|function|fd1ef91e0be8a83f
@@ -148,11 +102,15 @@ grid_removals|function|b455c3da7bad3c4a
 plot_det|function|0afeeb85f2d91cfe
 clean_sysbait|function|2e8609caeda102d5
 format_sec|function|eb8856a119d2191f
-sysbait_grid|stem|f8bc6de6b529eb57|37969e24e4064fd0|9ee0aa534c8976dc|-1270728549||t20207.9516562929s|s30420b|30420|rds|local|vector|||34.563|NAs introduced by coercion. NAs introduced by coercion. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
-take_grid|stem|91fe3abe73f28fa9|d6ea711d68235a89|eccea6701d28dc59|-728214767||t20207.9517139196s|s100238b|100238|rds|local|vector|||4.937|attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries. attribute variables are assumed to be spatially constant throughout all geometries|
-effort_query|stem|1577c3e22afb5fa3|bf70d3ed12f4ebba|5931418de493fd3f|1247403759||t20207.9517142552s|s500b|500|rds|local|vector|||0||
-sysbait_effort|stem|688e7ba401daf96f|5a161c47fe2f98cb|32c12734b56fa1e0|-1980835277||t20207.9537242783s|s1617249040b|1617249040|rds|local|vector|||83.375||
-dat_occ|stem|1adc7ae4b51f6191|26fa2f713ac934ea|2081fb8286a7402b|1335377113||t20207.9537419604s|s31582b|31582|rds|local|vector|||0.734||
-take_effort|stem|d0915e52755c8377|5462e351c17494c4|d0449629aa1a2eba|1078299164||t20207.9541123329s|s52737b|52737|rds|local|vector|||31.968||
-dat_rem|stem|92b6f536b1c33b9f|43f3363eb042e882|8440c75ce5f4fb1e|-938537672||t20207.9541130701s|s53589b|53589|rds|local|vector|||0.031||
-site_idx_lookup|stem|dfe5f9e38a3373f8|49fae7a4a0e83c1f|3f002fa6db9ec0a5|317771321||t20207.9541133595s|s490b|490|rds|local|vector|||0||
+samples_34f0237c314b2aba|branch|dc2078b220dd463d|5e870a305ecaa403|0f62d4755f058fd6|341238872||t20208.7671318619s|s228004236b|228004236|rds|local|vector|samples||1737.844|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_9838bd590d9a6a49|branch|06468cd8a17d755e|5e870a305ecaa403|0f62d4755f058fd6|-1203821932||t20208.7673495979s|s228184899b|228184899|rds|local|vector|samples||1759.797|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples_6a7beae6237c8c08|branch|4edc22aade836028|5e870a305ecaa403|0f62d4755f058fd6|763494999||t20208.767557151s|s227744889b|227744889|rds|local|vector|samples||1764.985|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+samples|pattern|9c448483a5816017|5e870a305ecaa403||1609165135||||683934024|rds|local|vector||samples_9838bd590d9a6a49*samples_6a7beae6237c8c08*samples_34f0237c314b2aba|5262.626||
+det_plot|stem|beec685e5c61d23c|6c6cd7991be13dba|cc79979185117631|-2113591127||t20208.7676624327s|s1179b|1179|rds|local|vector|||0.812||
+removal_prob_plots|stem|9fba52c76f58a5ac|482009c2e746f295|21fd07db3086519f|1290114349||t20208.7677656732s|s30039b|30039|rds|local|vector|||2.031||
+abundance_plots|stem|1dd938dfe88b2bc9|ff8933739bfd81d4|4e7e7f147bd707af|1784815996||t20208.7687639164s|s287485b|287485|rds|local|vector|||79.922|NAs produced|
+data_plots|stem|6e140ed9a58a961e|6ce6fe3157b979db|d5f4b53c5cf7e06b|-1715264339||t20208.7689161788s|s95b|95|rds|local|vector|||1.297||
+elim_samp_plot|stem|e45a0298b5ad0d52|9811939eabc6aaaa|319b64fc739b411b|-350873110||t20208.7690979667s|s552b|552|rds|local|vector|||8||
+trace_plots|stem|4572f4ef1830efb5|6c73400e09316942|8f10379360e36914|-1890721789||t20208.7692256747s|s3167b|3167|rds|local|vector|||10.235|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
+pabs_plots|stem|b1dce3b9f110aab3|937ca496bfd89c6f|7b2a19e51119c6f9|-1370887671||t20208.7762973411s|s59268927b|59268927|rds|local|vector|||601.422|attribute variables are assumed to be spatially constant throughout all geometries|
+wi_mod_val|stem|a75b6b25679d5691|dd822a6ecd435a6d|61465112f88b95cf|-38965719||t20208.7762978911s|s327b|327|rds|local|vector|||35.031|package DBI was built under R version 4.4.3. package keyring was built under R version 4.4.3|
