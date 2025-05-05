@@ -430,9 +430,9 @@ pull_effort_mis <- function(effort_query,
                             ssg_formatted){
   
   #connect to MIS
-  host <- "aap00va0ora407.usda.net "
+  host <- "xxxxxxxxx"
   port <- 1521
-  service <- "wsmis.usda.net"
+  service <- "xxxxxxx"
   drv <- dbDriver("Oracle")
   
   connect.string <- paste(
